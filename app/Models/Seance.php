@@ -11,7 +11,8 @@ class Seance extends Model
 
     // Le nom de la table correspondant à la migration qu'on a créée
     protected $table = 'seances';
-    protected $guarded = [];
+    protected $fillable = ['formateur_id', 'module_id', 'groupe_id', 'date', 'creneau', 'salle', 'type', 'commentaire_prof'];
+    // protected $guarded = [];
 
     public function formateur()
     {
