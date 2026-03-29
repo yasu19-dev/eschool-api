@@ -10,26 +10,34 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-{
-    Schema::create('stagiaire_profiles', function (Blueprint $table) {
-        $table->uuid('id')->primary();
-        $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
-        $table->string('cne', 50)->unique(); // Code étudiant
-        $table->string('nom', 100);
-        $table->string('prenom', 100);
-        $table->string('email_institutionnel', 150)->nullable();
-        $table->string('telephone', 20)->nullable();
-        $table->string('adresse')->nullable();
+    {
+        Schema::create('stagiaire_profiles', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
 
-        // --- Nouveaux champs Couverture Médicale / Allocations ---
-        $table->enum('situation_familiale', ['Célibataire', 'Marié', 'Divorcé', 'Veuf'])->default('Célibataire');
-        $table->boolean('beneficie_allocation')->default(false);
-        $table->string('num_affiliation_cnss')->nullable(); // Optionnel selon le besoin
+            // Informations obligatoires du Cahier des Charges
+            $table->string('cef', 20)->unique(); // Identifiant stagiaire
+            $table->string('cin', 15)->unique()->nullable();
+            $table->string('nom', 100);
+            $table->string('prenom', 100);
 
-        $table->enum('statut', ['Actif', 'Suspendu', 'Diplome'])->default('Actif');
-        $table->timestamps();
-    });
-}
+            // Détails personnels
+            $table->date('date_naissance')->nullable();
+            $table->string('lieu_naissance', 100)->nullable();
+            $table->string('adresse')->nullable();
+            $table->string('telephone', 20)->nullable();
+            $table->string('photo_url')->nullable();
+
+            // Informations académiques
+            $table->date('date_inscription')->nullable();
+            $table->string('annee_scolaire', 20)->nullable(); // Ex: 2025/2026
+
+            // Relation avec le groupe (Clé étrangère)
+            $table->foreignUuid('groupe_id')->nullable()->constrained('groupes')->nullOnDelete();
+
+            $table->timestamps();
+        });
+    }
 
     /**
      * Reverse the migrations.
