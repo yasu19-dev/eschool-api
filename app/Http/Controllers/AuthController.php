@@ -10,25 +10,31 @@ use Illuminate\Support\Facades\Hash;
 class AuthController extends Controller
 {
     public function login(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+{
+    $request->validate([
+        'email' => 'required|email',
+        'password' => 'required',
+    ]);
 
-        $user = User::where('email', $request->email)->first();
+    // On charge l'utilisateur AVEC ses rôles associés
+    $user = User::with('roles')->where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json(['message' => 'Identifiants incorrects'], 401);
-        }
-
-        $token = $user->createToken('eschool_token')->plainTextToken;
-
-        return response()->json([
-            'token' => $token,
-            'user' => $user
-        ]);
+    if (!$user || !Hash::check($request->password, $user->password)) {
+        return response()->json(['message' => 'Identifiants incorrects'], 401);
     }
+
+    $token = $user->createToken('eschool_token')->plainTextToken;
+
+    // On récupère le nom du premier rôle (je suppose que ta table 'roles' a une colonne 'nom' ou 'name')
+    // On le met en minuscules pour correspondre à tes routes React (admin, formateur, stagiaire)
+    $roleName = $user->roles->first() ? strtolower($user->roles->first()->code) : 'stagiaire';
+
+    return response()->json([
+        'token' => $token,
+        'user' => $user,
+        'role' => $roleName 
+    ]);
+}
 
     public function me(Request $request)
     {
