@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         StagiaireSeeder::class,
         SeancePresenceSeeder::class,
         FiliereSeeder::class,
+        FaqSeeder::class,
     ]);
     }
 }
