@@ -21,6 +21,7 @@ return new class extends Migration
         $table->integer('masse_horaire')->default(0);
 
         $table->timestamps();
+  
 });
     }
 
