@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Module extends Model
 {
     use HasUuids;
-    protected $guarded = [];
+    protected $fillable = ['code', 'intitule', 'coefficient', 'masse_horaire'];
 
     public function seances()
     {
