@@ -9,14 +9,17 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens; // Ajoute bien cette ligne en haut
 
 #[Fillable(['name', 'email', 'password'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
-    
+    // Ajoute HasApiTokens ici, avant HasFactory
+    use HasApiTokens, HasFactory, Notifiable;
+    // use HasFactory, Notifiable;
+
     // Un User a un seul profil selon son rôle
     public function stagiaireProfile()
     {
