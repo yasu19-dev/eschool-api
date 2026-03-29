@@ -19,6 +19,7 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     // Ajoute HasApiTokens ici, avant HasFactory
     use HasApiTokens, HasFactory, Notifiable;
+    use HasUuids;
     // use HasFactory, Notifiable;
     // Un User a un seul profil selon son rôle
     public function stagiaireProfile()
