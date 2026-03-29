@@ -17,8 +17,9 @@ use Laravel\Sanctum\HasApiTokens; // Ajoute bien cette ligne en haut
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable;
-
+    // Ajoute HasApiTokens ici, avant HasFactory
+    use HasApiTokens, HasFactory, Notifiable;
+    // use HasFactory, Notifiable;
     // Un User a un seul profil selon son rôle
     public function stagiaireProfile()
     {
