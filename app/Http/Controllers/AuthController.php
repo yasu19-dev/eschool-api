@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
-
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
@@ -16,7 +16,6 @@ class AuthController extends Controller
         'password' => 'required',
     ]);
 
-    // On charge l'utilisateur AVEC ses rôles associés
     $user = User::with('roles')->where('email', $request->email)->first();
 
     if (!$user || !Hash::check($request->password, $user->password)) {
@@ -24,15 +23,27 @@ class AuthController extends Controller
     }
 
     $token = $user->createToken('eschool_token')->plainTextToken;
+    $roleCode = $user->roles->first() ? strtolower($user->roles->first()->code) : 'stagiaire';
 
-    // On récupère le nom du premier rôle (je suppose que ta table 'roles' a une colonne 'nom' ou 'name')
-    // On le met en minuscules pour correspondre à tes routes React (admin, formateur, stagiaire)
-    $roleName = $user->roles->first() ? strtolower($user->roles->first()->code) : 'stagiaire';
+    // 1. On va chercher le profil en fonction du rôle
+    $profile = null;
+    if ($roleCode === 'admin') {
+        $profile = DB::table('admin_profiles')->where('user_id', $user->id)->first();
+    } elseif ($roleCode === 'formateur') {
+        $profile = DB::table('formateur_profiles')->where('user_id', $user->id)->first();
+    } elseif ($roleCode === 'stagiaire') {
+        $profile = DB::table('stagiaire_profiles')->where('user_id', $user->id)->first();
+    }
+
+    // 2. On attache le nom et prénom directement à l'objet utilisateur
+    // On met des chaînes vides par défaut au cas où le profil n'a pas encore été rempli par Aya
+    $user->nom = $profile ? $profile->nom : '';
+    $user->prenom = $profile ? $profile->prenom : '';
 
     return response()->json([
         'token' => $token,
         'user' => $user,
-        'role' => $roleName 
+        'role' => $roleCode
     ]);
 }
 
