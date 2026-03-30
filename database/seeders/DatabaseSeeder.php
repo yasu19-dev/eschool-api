@@ -19,6 +19,9 @@ class DatabaseSeeder extends Seeder
         UserRoleSeeder::class,
         PedagogiqueSeeder::class, // Doit être avant Stagiaire pour créer les Groupes
         StagiaireSeeder::class,
+        SeancePresenceSeeder::class,
+        FiliereSeeder::class,
+        FaqSeeder::class,
     ]);
     }
 }

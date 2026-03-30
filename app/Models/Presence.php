@@ -8,7 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Presence extends Model
 {
     use HasUuids;
-    protected $guarded = [];
+    protected $fillable = ['seance_id', 'stagiaire_id', 'est_absent', 'est_en_retard', 'est_justifie'];
+    // protected $guarded = [];
 
     public function seance()
     {
