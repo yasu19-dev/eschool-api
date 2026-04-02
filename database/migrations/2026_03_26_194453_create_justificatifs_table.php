@@ -17,8 +17,9 @@ Schema::create('justificatifs', function (Blueprint $table) {
     $table->foreignUuid('stagiaire_id')->constrained('stagiaire_profiles')->cascadeOnDelete();
     $table->foreignUuid('seance_id')->constrained('seances')->cascadeOnDelete();
     $table->string('fichier_url');
-    $table->enum('type', ['Certificat Médical', 'Convocation', 'Autre']);
+    $table->enum('statut', ['En attente', 'Justifié', 'Non justifié'])->default('En attente');
     $table->boolean('est_valide')->default(false);
+     $table->enum('type', ['Certificat Médical', 'Convocation', 'Autre']);
     $table->timestamps();
 });
     }

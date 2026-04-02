@@ -20,9 +20,9 @@ class StagiaireProfile extends Model
         return $this->hasMany(Note::class, 'stagiaire_id');
     }
 
-    public function presences()
+    public function absences()
     {
-        return $this->hasMany(Presence::class, 'stagiaire_id');
+        return $this->hasMany(Absence::class, 'stagiaire_id');
     }
 
     // Démarches
@@ -48,6 +48,6 @@ class StagiaireProfile extends Model
     {
         return $this->hasMany(Notification::class, 'stagiaire_id');
     }
-    
+
 
 }

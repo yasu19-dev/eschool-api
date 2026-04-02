@@ -7,12 +7,28 @@ use Illuminate\Database\Eloquent\Model;
 
 class Seance extends Model
 {
-   use HasUuids;
+    use HasUuids;
 
-    // Le nom de la table correspondant à la migration qu'on a créée
+    /**
+     * Le nom de la table correspondant à la migration.
+     */
     protected $table = 'seances';
-    protected $fillable = ['formateur_id', 'module_id', 'groupe_id', 'date', 'creneau', 'salle', 'type', 'commentaire_prof'];
-    // protected $guarded = [];
+
+    /**
+     * Les attributs assignables en masse.
+     */
+    protected $fillable = [
+        'formateur_id',
+        'module_id',
+        'groupe_id',
+        'date',
+        'creneau',
+        'salle',
+        'type',
+        'commentaire_prof'
+    ];
+
+    // --- RELATIONS ---
 
     public function formateur()
     {
@@ -29,11 +45,19 @@ class Seance extends Model
         return $this->belongsTo(Groupe::class);
     }
 
-    // Pour afficher la liste des étudiants absents d'une séance
-    public function presences()
+    /**
+     * Relation mise à jour : On pointe désormais vers le modèle Absence.
+     */
+    public function absences()
     {
-        return $this->hasMany(Presence::class, 'seance_id');
+        return $this->hasMany(Absence::class, 'seance_id');
     }
+    public function countAbsentsReels()
+    {
+            // On compte ceux qui ne sont pas marqués "en retard"
+            return $this->absences()->where('est_en_retard', false)->count();
+        }
+
     public function justificatifs()
     {
         return $this->hasMany(Justificatif::class, 'seance_id');

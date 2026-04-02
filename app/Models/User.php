@@ -2,28 +2,40 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Database\Factories\UserFactory;
-use Illuminate\Database\Eloquent\Attributes\Fillable;
-use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens; // Ajoute bien cette ligne en haut
+use Laravel\Sanctum\HasApiTokens;
 
-#[Fillable(['name', 'email', 'password'])]
-#[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
-    /** @use HasFactory<UserFactory> */
+    use HasApiTokens, HasFactory, Notifiable, HasUuids;
 
-    // Ajoute HasApiTokens ici, avant HasFactory
-    use HasApiTokens, HasFactory, Notifiable;
-    // use HasFactory, Notifiable;
-    use HasUuids;
+    /**
+     * Les attributs assignables en masse.
+     * Note : J'ai retiré 'name' car il n'est pas dans ta migration 000000.
+     */
+    protected $fillable = [
+        'email',
+        'password',
+        'role', // Nouveau champ direct
+        'etat',
+        'email_notifications',
+        'push_notifications',
+        'lastLogin',
+    ];
 
-    // Un User a un seul profil selon son rôle
+    /**
+     * Les attributs cachés pour la sérialisation.
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    // --- RELATIONS AVEC LES PROFILS ---
+
     public function stagiaireProfile()
     {
         return $this->hasOne(StagiaireProfile::class);
@@ -39,21 +51,34 @@ class User extends Authenticatable
         return $this->hasOne(AdminProfile::class);
     }
 
-    // Un User peut avoir plusieurs rôles (Many-to-Many)
-    public function roles()
+    // --- HELPERS DE RÔLES (Pratique pour tes Controllers) ---
+
+    public function isAdmin(): bool
     {
-        return $this->belongsToMany(Role::class);
+        return $this->role === 'admin';
     }
+
+    public function isFormateur(): bool
+    {
+        return $this->role === 'formateur';
+    }
+
+    public function isStagiaire(): bool
+    {
+        return $this->role === 'stagiaire';
+    }
+
     /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
+     * Casts des attributs.
      */
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'email_notifications' => 'boolean',
+            'push_notifications' => 'boolean',
+            'lastLogin' => 'datetime',
         ];
     }
 }

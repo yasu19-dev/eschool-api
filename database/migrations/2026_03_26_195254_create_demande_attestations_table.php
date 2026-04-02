@@ -14,8 +14,8 @@ return new class extends Migration
     Schema::create('demande_attestations', function (Blueprint $table) {
     $table->uuid('id')->primary(); // Format ATT-2025-XXX géré au niveau du code
     $table->foreignUuid('stagiaire_id')->constrained('stagiaire_profiles')->cascadeOnDelete();
-    $table->string('type'); // Scolarité, Stage, Notes
-
+// Supporte : Scolarité, Récupération Bac provisoire, Récupération Bac définitive
+    $table->string('type');
     // Statuts exacts de ton AdminAttestations.jsx
     $table->enum('status', [
         'En attente',

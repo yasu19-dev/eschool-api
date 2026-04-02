@@ -16,6 +16,7 @@ return new class extends Migration
         $table->foreignUuid('user_id')->constrained('users')->cascadeOnDelete();
         $table->string('nom');
         $table->string('prenom');
+        $table->enum('role_admin', ['directeur', 'responsable_stagiaire'])->default('responsable_stagiaire');
         $table->timestamps();
 });
     }

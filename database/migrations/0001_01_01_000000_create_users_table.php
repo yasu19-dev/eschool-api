@@ -15,6 +15,7 @@ return new class extends Migration
         $table->uuid('id')->primary();
         $table->string('email')->unique();
         $table->string('password');
+        $table->enum('role', ['admin', 'formateur', 'stagiaire'])->default('admin');
         $table->enum('etat', ['Actif', 'Inactif', 'Bloque', 'Supprime'])->default('Actif');
         $table->boolean('email_notifications')->default(true);
         $table->boolean('push_notifications')->default(true);

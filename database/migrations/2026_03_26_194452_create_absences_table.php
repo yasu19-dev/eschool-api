@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
 {
-    Schema::create('presences', function (Blueprint $table) {
+    Schema::create('absences', function (Blueprint $table) {
     $table->uuid('id')->primary();
     $table->foreignUuid('seance_id')->constrained('seances')->cascadeOnDelete();
     $table->foreignUuid('stagiaire_id')->constrained('stagiaire_profiles');
-   $table->boolean('est_absent')->default(false);
-        $table->boolean('est_en_retard')->default(false);
-        $table->boolean('est_justifie')->default(false);
+    // Logique demandée : if true = présent (retard), else = absent
+    $table->boolean('est_en_retard')->default(false);
+
+    $table->boolean('est_justifie')->default(false);
+    $table->text('motif')->nullable();
     $table->timestamps();
 });
 }
@@ -27,6 +29,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('presences');
+        Schema::dropIfExists('absences');
     }
 };
