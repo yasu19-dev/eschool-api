@@ -62,7 +62,7 @@ class FiliereSeeder extends Seeder
                 ],
                 'color' => '#00C9A7',
             ],
-            [
+            [   
                 'title' => 'Infographie',
                 'code' => 'INFO',
                 'duration' => '2 ans',
