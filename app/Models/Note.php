@@ -8,7 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 class Note extends Model
 {
    use HasUuids;
-    protected $guarded = [];
+    protected $fillable = [
+        'stagiaire_id',
+        'module_id',
+        'formateur_id', // Ajoute-le si tu veux savoir quel prof a mis la note
+        'valeur',
+        'type_evaluation',
+        'session'
+    ];
 
     public function stagiaire()
     {

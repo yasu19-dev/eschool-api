@@ -26,6 +26,7 @@ class Absence extends Model
         'est_justifie',
         'motif'
     ];
+    
 
     // --- RELATIONS ---
 

@@ -67,8 +67,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dashboard', [ResponsableController::class, 'index']);
         Route::get('/justifications', [ResponsableController::class, 'getPendingJustifications']);
         // Route pour valider une absence spécifique
-        Route::patch('/absences/{absence}/validate', [AbsenceController::class, 'validateAbsence']);
+        // Route::patch('/absences/{absence}/validate', [AbsenceController::class, 'validateAbsence']);
+        // ✅ CORRECTION :
+    // Et utilise {id} pour correspondre à l'argument de ta fonction
+    Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);
         Route::get('/attestations', [ResponsableController::class, 'getPendingAttestations']);
+        
         Route::patch('/attestations/{id}/validate', [ResponsableController::class, 'validateAttestation']);
     });
 });

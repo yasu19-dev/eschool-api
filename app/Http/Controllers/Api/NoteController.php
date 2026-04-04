@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Note;
 use Illuminate\Http\Request;
+
 
 class NoteController extends Controller
 {
@@ -22,25 +24,39 @@ class NoteController extends Controller
 
 public function store(Request $request)
 {
+    // 1. Validation (Gardons la même)
     $validated = $request->validate([
-        'stagiaire_id' => 'required|exists:stagiaire_profiles,id',
-        'module_id'    => 'required|exists:modules,id',
-        'valeur'       => 'required|numeric|min:0|max:20',
-        'type_examen'  => 'required|in:Controle Continu,EFM,TP',
+        'stagiaire_id'    => 'required|exists:stagiaire_profiles,id',
+        'module_id'       => 'required|exists:modules,id',
+        'valeur'          => 'required|numeric|min:0|max:20',
+        'type_evaluation' => 'required|string',
+        'session'         => 'required|string',
     ]);
 
-    $formateurId = $request->user()->formateurProfile->id;
+    // 2. Récupération sécurisée du profil formateur
+    $formateur = $request->user()->formateurProfile;
 
+    // Si l'utilisateur n'est pas un formateur, on arrête tout proprement
+    if (!$formateur) {
+        return response()->json([
+            'message' => "Erreur : Vous n'avez pas de profil formateur associé."
+        ], 403);
+    }
+
+    // 3. Création de la note
     $note = \App\Models\Note::create([
-        'stagiaire_id' => $validated['stagiaire_id'],
-        'module_id'    => $validated['module_id'],
-        'formateur_id' => $formateurId,
-        'valeur'       => $validated['valeur'],
-        'type_examen'  => $validated['type_examen'],
-        'date_saisie'  => now(),
+        'stagiaire_id'    => $validated['stagiaire_id'],
+        'module_id'       => $validated['module_id'],
+        'formateur_id'    => $formateur->id, // Plus d'erreur ici !
+        'valeur'          => $validated['valeur'],
+        'type_evaluation' => $validated['type_evaluation'],
+        'session'         => $validated['session'],
     ]);
 
-    return response()->json(['message' => 'Note ajoutée avec succès', 'note' => $note], 201);
+    return response()->json([
+        'message' => 'Note enregistrée avec succès !',
+        'data' => $note
+    ], 201);
 }
 
     /**

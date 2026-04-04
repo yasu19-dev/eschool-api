@@ -22,21 +22,41 @@ class AnnonceController extends Controller
 
 public function store(Request $request)
 {
-    $validated = $request->validate([
-        'titre'      => 'required|string|max:200',
-        'contenu'    => 'required|string',
-        'groupe_id'  => 'nullable|exists:groupes,id', // Si vide = annonce pour tous ses groupes
-    ]);
+    try {
+        // 1. Validation (On ajoute 'type' avec les valeurs exactes de ton ENUM)
+        $validated = $request->validate([
+            'titre'     => 'required|string|max:255',
+            'contenu'   => 'required|string',
+            'type'      => 'required|in:Examen,Absence Formateur,Information',
+            'groupe_id' => 'required|exists:groupes,id',
+        ]);
 
-    $annonce = \App\Models\Annonce::create([
-        'formateur_id' => $request->user()->formateurProfile->id,
-        'groupe_id'    => $validated['groupe_id'],
-        'titre'        => $validated['titre'],
-        'contenu'      => $validated['contenu'],
-        'date_publication' => now(),
-    ]);
+        $formateur = $request->user()->formateurProfile;
 
-    return response()->json(['message' => 'Annonce publiée !', 'annonce' => $annonce], 201);
+        if (!$formateur) {
+            return response()->json(['error' => 'Profil formateur introuvable'], 403);
+        }
+
+        // 2. Création
+        $annonce = \App\Models\Annonce::create([
+            'formateur_id' => $formateur->id,
+            'groupe_id'    => $validated['groupe_id'],
+            'titre'        => $validated['titre'],
+            'contenu'      => $validated['contenu'],
+            'type'         => $validated['type'], // On insère le type ici
+        ]);
+
+        return response()->json([
+            'message' => 'Annonce publiée avec succès !',
+            'data' => $annonce
+        ], 201);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'Erreur Annonce',
+            'message' => $e->getMessage()
+        ], 500);
+    }
 }
 
     /**

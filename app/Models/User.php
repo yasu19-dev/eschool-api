@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use App\Models\StagiaireProfile;
+use App\Models\FormateurProfile;
+use App\Models\AdminProfile;
 
 class User extends Authenticatable
 {
