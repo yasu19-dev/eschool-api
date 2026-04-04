@@ -38,7 +38,7 @@ class StagiaireProfile extends Model
 
     public function groupes()
     {
-        return $this->belongsToMany(Groupe::class, 'groupe_stagiaire', 'stagiaire_id', 'groupe_id');
+        return $this->belongsTo(Groupe::class, 'groupe_stagiaire', 'stagiaire_id', 'groupe_id');
     }
     public function justificatifs()
     {
