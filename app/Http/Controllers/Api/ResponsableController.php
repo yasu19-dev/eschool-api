@@ -37,7 +37,7 @@ public function validateAbsence($id)
     try {
         // 1. On cherche l'absence par son UUID
         // Si l'ID n'existe pas, Laravel renvoie automatiquement une erreur 404
-        $absence = \App\Models\Absence::findOrFail($id);
+        $absence = Absence::findOrFail($id);
 
         // 2. Mise à jour de la colonne 'est_justifie'
         // On passe la valeur à 1 (Vrai)
@@ -75,7 +75,7 @@ public function validateAbsence($id)
 {
     try {
         // 1. Cherche la demande par son UUID
-        $demande = \App\Models\DemandeAttestation::findOrFail($id);
+        $demande = DemandeAttestation::findOrFail($id);
 
         // 2. Mise à jour selon les ENUM de ta migration
         $demande->update([
@@ -111,7 +111,7 @@ public function validateAbsence($id)
 {
     try {
         // On teste la requête étape par étape
-        return \App\Models\DemandeAttestation::where('status', 'En attente')
+        return DemandeAttestation::where('status', 'En attente')
             ->with(['stagiaire.user']) // On récupère le stagiaire ET son nom/email
             ->get();
 

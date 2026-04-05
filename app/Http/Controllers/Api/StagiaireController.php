@@ -135,7 +135,7 @@ public function postAttestation(Request $request)
 
     // 2. Création de la demande
     // Le 'status' sera "En attente" par défaut grâce à ta migration
-    $demande = \App\Models\DemandeAttestation::create([
+    $demande = DemandeAttestation::create([
         'stagiaire_id' => $profile->id,
         'type' => $request->type,
     ]);
