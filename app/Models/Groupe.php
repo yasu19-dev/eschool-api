@@ -25,6 +25,10 @@ class Groupe extends Model
     }
     public function stagiaireprofiles()
     {
-        return $this->hasMany(StagiaireProfile::class);
+        return $this->hasMany(StagiaireProfile::class,'groupe_id');
     }
+    public function modules()
+{
+    return $this->belongsToMany(Module::class, 'groupe_module');
+}
 }

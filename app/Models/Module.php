@@ -19,4 +19,8 @@ class Module extends Model
     {
         return $this->hasMany(Note::class);
     }
+    public function groupes()
+{
+    return $this->belongsToMany(Groupe::class, 'groupe_module');
+}
 }

@@ -24,7 +24,7 @@ class Note extends Model
 
     public function module()
     {
-        return $this->belongsTo(Module::class);
+        return $this->belongsTo(Module::class, 'module_id');
     }
 
     public function formateur()
