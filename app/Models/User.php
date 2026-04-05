@@ -10,11 +10,12 @@ use Laravel\Sanctum\HasApiTokens;
 use App\Models\StagiaireProfile;
 use App\Models\FormateurProfile;
 use App\Models\AdminProfile;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, HasUuids;
-
+    use SoftDeletes;
     /**
      * Les attributs assignables en masse.
      * Note : J'ai retiré 'name' car il n'est pas dans ta migration 000000.
@@ -36,6 +37,7 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+    protected $dates = ['deleted_at'];
 
     // --- RELATIONS AVEC LES PROFILS ---
 

@@ -14,7 +14,7 @@ return new class extends Migration
     Schema::create('absences', function (Blueprint $table) {
     $table->uuid('id')->primary();
     $table->foreignUuid('seance_id')->constrained('seances')->cascadeOnDelete();
-    $table->foreignUuid('stagiaire_id')->constrained('stagiaire_profiles');
+    $table->foreignUuid('stagiaire_id')->constrained('stagiaire_profiles')->cascadeOnDelete();
     // Logique demandée : if true = présent (retard), else = absent
     $table->boolean('est_en_retard')->default(false);
 
