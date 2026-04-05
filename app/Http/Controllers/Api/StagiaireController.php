@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Stagiaire\StagiaireProfileResource;
 use App\Models\Reclamation;
 use App\Models\DemandeAttestation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class StagiaireController extends Controller
 {
@@ -36,17 +38,62 @@ class StagiaireController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function show(Request $request)
     {
-        //
+        // 1. Récupérer le profil lié à l'utilisateur authentifié
+        $profile = $request->user()->stagiaireProfile;
+
+        if (!$profile) {
+            return response()->json(['message' => 'Profil stagiaire introuvable.'], 404);
+        }
+
+        // 2. Retourner les données formatées via la JsonResource
+        // Note : On charge la relation 'groupe' pour éviter les erreurs dans la ressource
+        return new StagiaireProfileResource($profile->load('groupe'));
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
+   public function update(Request $request)
     {
-        //
+        $user = $request->user();
+        $profile = $user->stagiaireProfile;
+
+        // 1. Validation des données
+        $validated = $request->validate([
+            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
+            'telephone' => 'sometimes|nullable|string|max:20',
+            'adresse' => 'sometimes|nullable|string|max:255',
+            // Validation optionnelle pour le changement de mot de passe
+            'current_password' => 'required_with:new_password',
+            'new_password' => 'nullable|min:8|confirmed',
+        ]);
+
+        // 2. Mise à jour de l'email dans la table 'users'
+        if ($request->has('email')) {
+            $user->update(['email' => $validated['email']]);
+        }
+
+        // 3. Mise à jour des infos dans la table 'stagiaire_profiles'
+        $profile->update($request->only(['telephone', 'adresse']));
+
+        // 4. Gestion du changement de mot de passe si demandé
+        if ($request->filled('new_password')) {
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'message' => 'Le mot de passe actuel est incorrect.'
+                ], 422);
+            }
+            $user->update([
+                'password' => Hash::make($request->new_password)
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Profil mis à jour avec succès.',
+            'data' => new StagiaireProfileResource($profile->load('groupe'))
+        ]);
     }
 
     /**
@@ -145,5 +192,13 @@ public function postAttestation(Request $request)
         'reference' => $demande->id, // L'ID servira de base au format ATT-2025-XXX
         'status' => $demande->status
     ], 201);
+}
+// app/Http/Controllers/Api/StagiaireController.php
+
+public function getModules(Request $request) {
+    // On récupère directement les modules du groupe du stagiaire connecté
+    $modules = $request->user()->stagiaireProfile->groupe->modules;
+
+    return response()->json($modules);
 }
 }

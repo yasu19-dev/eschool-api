@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // Route::get('/absences', [AbsenceController::class, 'myAbsences']);
         Route::get('/absences', [StagiaireController::class, 'getAbsences']);
         Route::get('/profile', [StagiaireController::class, 'show']);
+        Route::put('/profile', [StagiaireController::class, 'update']);
+        Route::get('/modules', [StagiaireController::class, 'getModules']);
     });
 
     // 👨‍🏫 ESPACE FORMATEUR
@@ -72,7 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Et utilise {id} pour correspondre à l'argument de ta fonction
     Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);
         Route::get('/attestations', [ResponsableController::class, 'getPendingAttestations']);
-        
+
         Route::patch('/attestations/{id}/validate', [ResponsableController::class, 'validateAttestation']);
     });
 });
