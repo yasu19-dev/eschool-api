@@ -20,7 +20,6 @@ class NoteResource extends JsonResource
         'valeur' => $this->valeur,
         'type_evaluation' => $this->type_evaluation,
         'session' => $this->session,
-        'session' => $this->session,
         'module' => $this->module->nom,
     ];
 }
