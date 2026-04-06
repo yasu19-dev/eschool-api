@@ -201,4 +201,24 @@ public function getModules(Request $request) {
 
     return response()->json($modules);
 }
+public function getEmploi(Request $request)
+{
+    // On récupère le groupe du stagiaire connecté
+    $groupeId = $request->user()->stagiaireProfile->groupe_id;
+
+    $emploi = \App\Models\EmploiDuTempsPdf::where('groupe_id', $groupeId)
+                ->latest() // On prend le dernier ajouté
+                ->first();
+
+    if (!$emploi) {
+        return response()->json(['message' => 'Aucun emploi du temps disponible'], 404);
+    }
+
+    return response()->json([
+        'titre' => $emploi->titre,
+        'url' => $emploi->full_url, // URL générée par l'accesseur
+        'format' => $emploi->format,
+        'date' => $emploi->created_at->format('d/m/Y')
+    ]);
+}
 }
