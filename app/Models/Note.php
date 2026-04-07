@@ -14,7 +14,7 @@ class Note extends Model
         'formateur_id', // Ajoute-le si tu veux savoir quel prof a mis la note
         'valeur',
         'type_evaluation',
-        'session'
+        'session',
     ];
 
     public function stagiaire()
