@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Annonce;
 use Illuminate\Http\Request;
 
 class AnnonceController extends Controller
@@ -82,4 +83,19 @@ public function store(Request $request)
     {
         //
     }
+    public function getStagiaireAnnonces(Request $request)
+{
+    $groupeId = $request->user()->stagiaireProfile->groupe_id;
+
+    // Récupère les annonces du groupe ou générales (null)
+    $annonces = \App\Models\Annonce::where(function($query) use ($groupeId) {
+            $query->where('groupe_id', $groupeId)
+                  ->orWhereNull('groupe_id');
+        })
+        ->orderBy('priorite', 'asc') // Optionnel: mettre les urgents en haut
+        ->latest()
+        ->get();
+
+    return response()->json($annonces);
+}
 }

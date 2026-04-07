@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile', [StagiaireController::class, 'update']);
         Route::get('/modules', [StagiaireController::class, 'getModules']);
         Route::get('/schedule', [StagiaireController::class, 'getEmploi']);
+        Route::get('/annonces', [AnnonceController::class, 'getStagiaireAnnonces']);
     });
 
     // 👨‍🏫 ESPACE FORMATEUR
