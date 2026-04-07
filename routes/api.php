@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile', [StagiaireController::class, 'update']);
         Route::get('/modules', [StagiaireController::class, 'getModules']);
         Route::get('/annonces', [AnnonceController::class, 'getStagiaireAnnonces']);
+        Route::post('upload-photo', [StagiaireController::class, 'uploadPhoto']);
         Route::post('/reclamations', [StagiaireController::class, 'postReclamation']);
         Route::post('/attestations', [StagiaireController::class, 'postAttestation']);
 
