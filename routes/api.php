@@ -43,6 +43,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/modules', [StagiaireController::class, 'getModules']);
         Route::get('/schedule', [StagiaireController::class, 'getEmploi']);
         Route::get('/annonces', [AnnonceController::class, 'getStagiaireAnnonces']);
+        Route::post('upload-photo', [StagiaireController::class, 'uploadPhoto']);
     });
 
     // 👨‍🏫 ESPACE FORMATEUR

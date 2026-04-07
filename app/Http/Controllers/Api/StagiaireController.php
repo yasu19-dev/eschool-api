@@ -237,4 +237,18 @@ public function getEmploi(Request $request)
         'date' => $emploi->created_at->format('d/m/Y')
     ]);
 }
+
+public function uploadPhoto(Request $request)
+{
+    $request->validate(['photo' => 'required|image|max:2048']);
+
+    $profile = $request->user()->stagiaireProfile; // On cible le profil stagiaire
+
+    if ($request->hasFile('photo')) {
+        $path = $request->file('photo')->store('profiles/stagiaires', 'public');
+        $profile->update(['photo_url' => asset('storage/' . $path)]);
+
+        return response()->json(['photo_url' => asset('storage/' . $path)]);
+    }
+}
 }
