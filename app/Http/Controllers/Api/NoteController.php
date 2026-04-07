@@ -4,121 +4,137 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Note;
-use Illuminate\Container\Attributes\DB;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB as FacadesDB;
+use Illuminate\Support\Facades\DB;
 
 class NoteController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Enregistrer une seule note (CREATE uniquement)
      */
-    public function index()
+    public function store(Request $request)
     {
-        //
+        $validated = $request->validate([
+            'stagiaire_id'    => 'required|exists:stagiaire_profiles,id',
+            'module_id'       => 'required|exists:modules,id',
+            'valeur'          => 'required|numeric|min:0|max:20',
+            'type_evaluation' => 'required|in:cc1,cc2,efm',
+            'session'         => 'required|string',
+        ]);
+
+        $formateur = $request->user()->formateurProfile;
+
+        if (!$formateur) {
+            return response()->json(['message' => "Profil formateur non trouvé."], 403);
+        }
+
+        // Vérifier si la note existe déjà pour éviter les doublons en mode "Create"
+        $exists = Note::where([
+            'stagiaire_id'    => $validated['stagiaire_id'],
+            'module_id'       => $validated['module_id'],
+            'type_evaluation' => $validated['type_evaluation'],
+        ])->exists();
+
+        if ($exists) {
+            return response()->json(['message' => 'Une note existe déjà pour ce module et ce type.'], 422);
+        }
+
+        $note = Note::create([
+            'stagiaire_id'    => $validated['stagiaire_id'],
+            'module_id'       => $validated['module_id'],
+            'formateur_id'    => $formateur->id,
+            'valeur'          => $validated['valeur'],
+            'type_evaluation' => $validated['type_evaluation'],
+            'session'         => $validated['session'],
+        ]);
+
+        return response()->json(['message' => 'Note créée avec succès !', 'data' => $note], 201);
     }
 
     /**
-     * Store a newly created resource in storage.
-     */
-    // NoteController.php
-
-public function store(Request $request)
-{
-    // 1. Validation (Gardons la même)
-    $validated = $request->validate([
-        'stagiaire_id'    => 'required|exists:stagiaire_profiles,id',
-        'module_id'       => 'required|exists:modules,id',
-        'valeur'          => 'required|numeric|min:0|max:20',
-        'type_evaluation' => 'required|in:cc1,cc2,efm',
-        'session'         => 'required|string',
-    ]);
-
-    // 2. Récupération sécurisée du profil formateur
-    $formateur = $request->user()->formateurProfile;
-
-    // Si l'utilisateur n'est pas un formateur, on arrête tout proprement
-    if (!$formateur) {
-        return response()->json([
-            'message' => "Erreur : Vous n'avez pas de profil formateur associé."
-        ], 403);
-    }
-
-    // 3. Création de la note
-    $note = Note::create([
-        'stagiaire_id'    => $validated['stagiaire_id'],
-        'module_id'       => $validated['module_id'],
-        'formateur_id'    => $formateur->id, // Plus d'erreur ici !
-        'valeur'          => $validated['valeur'],
-        'type_evaluation' => $validated['type_evaluation'],
-        'session'         => $validated['session'],
-    ]);
-
-    return response()->json([
-        'message' => 'Note enregistrée avec succès !',
-        'data' => $note
-    ], 201);
-}
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
+     * Mettre à jour une seule note (UPDATE uniquement)
      */
     public function update(Request $request, string $id)
     {
-        //
+        $validated = $request->validate([
+            'valeur'  => 'required|numeric|min:0|max:20',
+            'session' => 'sometimes|string',
+        ]);
+
+        $note = Note::findOrFail($id);
+
+        $note->update([
+            'valeur'  => $validated['valeur'],
+            'session' => $validated['session'] ?? $note->session,
+        ]);
+
+        return response()->json(['message' => 'Note mise à jour !', 'data' => $note], 200);
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Enregistrement en masse (Logique manuelle Create ou Update)
      */
-    public function destroy(string $id)
+    public function storeBulk(Request $request)
     {
-        //
-    }
-    // NoteController.php
+        $validated = $request->validate([
+            'module_id'       => 'required|exists:modules,id',
+            'type_evaluation' => 'required|in:cc1,cc2,efm',
+            'session'         => 'required|string',
+            'notes'           => 'required|array',
+            'notes.*.stagiaire_id' => 'required|exists:stagiaire_profiles,id',
+            'notes.*.valeur'       => 'nullable|numeric|min:0|max:20',
+        ]);
 
-// app/Http/Controllers/Api/NoteController.php
+        $formateurId = $request->user()->formateurProfile->id;
 
-public function storeBulk(Request $request)
-{
-    $validated = $request->validate([
-        'module_id'       => 'required|exists:modules,id',
-        'type_evaluation' => 'required|in:cc1,cc2,efm', // Uniquement le type d'évaluation
-        'session'         => 'required|string',
-        'notes'           => 'required|array',
-        'notes.*.stagiaire_id' => 'required|exists:stagiaire_profiles,id',
-        'notes.*.valeur'       => 'nullable|numeric|min:0|max:20',
-    ]);
+        DB::transaction(function () use ($validated, $formateurId) {
+            foreach ($validated['notes'] as $noteItem) {
+                if ($noteItem['valeur'] !== null && $noteItem['valeur'] !== '') {
 
-    $formateurId = $request->user()->formateurProfile->id;
-
-    FacadesDB::transaction(function () use ($validated, $formateurId) {
-        foreach ($validated['notes'] as $noteData) {
-            if (isset($noteData['valeur']) && $noteData['valeur'] !== '') {
-                Note::updateOrCreate(
-                    [
-                        'stagiaire_id'    => $noteData['stagiaire_id'],
+                    // 1. On cherche manuellement si la note existe
+                    $note = Note::where([
+                        'stagiaire_id'    => $noteItem['stagiaire_id'],
                         'module_id'       => $validated['module_id'],
                         'type_evaluation' => $validated['type_evaluation'],
-                    ],
-                    [
-                        'formateur_id'    => $formateurId,
-                        'valeur'          => $noteData['valeur'],
-                        'session'         => $validated['session'], // Le semestre est supprimé d'ici
-                    ]
-                );
-            }
-        }
-    });
+                    ])->first();
 
-    return response()->json(['message' => 'Notes enregistrées avec succès !']);
+                    if ($note) {
+                        // 2. Si elle existe, on fait un UPDATE
+                        $note->update([
+                            'valeur'       => $noteItem['valeur'],
+                            'formateur_id' => $formateurId,
+                            'session'      => $validated['session'],
+                        ]);
+                    } else {
+                        // 3. Sinon, on fait un CREATE
+                        Note::create([
+                            'stagiaire_id'    => $noteItem['stagiaire_id'],
+                            'module_id'       => $validated['module_id'],
+                            'formateur_id'    => $formateurId,
+                            'type_evaluation' => $validated['type_evaluation'],
+                            'valeur'          => $noteItem['valeur'],
+                            'session'         => $validated['session'],
+                        ]);
+                    }
+                }
+            }
+        });
+
+        return response()->json(['message' => 'Traitement bulk terminé avec succès !'], 200);
+    }
+    public function getNotesForFormateur(Request $request)
+{
+    // On valide que les paramètres sont présents dans l'URL
+    $request->validate([
+        'module_id' => 'required|exists:modules,id',
+        'type'      => 'required|in:cc1,cc2,efm',
+    ]);
+
+    // On récupère les notes filtrées
+    $notes = Note::where('module_id', $request->module_id)
+                 ->where('type_evaluation', $request->type)
+                 ->get();
+
+    return response()->json($notes);
 }
 }

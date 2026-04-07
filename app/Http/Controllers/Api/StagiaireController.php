@@ -109,7 +109,9 @@ class StagiaireController extends Controller
     {
         $profile = $request->user()->stagiaireProfile;
         // On charge les notes avec les informations du module associé
-        return response()->json($profile->notes()->with('module')->get());
+        return response()->json($profile->notes()
+        ->with('module')
+        ->get());
     }
 
 
