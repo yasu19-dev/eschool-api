@@ -36,10 +36,26 @@ class FormateurController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
+    // app/Http/Controllers/Api/FormateurController.php
+
+public function updateProfile(Request $request)
+{
+    $profile = $request->user()->formateurProfile;
+
+    $validated = $request->validate([
+        'telephone' => 'nullable|string|max:20',
+        'adresse' => 'nullable|string|max:255',
+        'bio' => 'nullable|string',
+        'email_professionnel' => 'required|email|max:150',
+    ]);
+
+    $profile->update($validated);
+
+    return response()->json([
+        'message' => 'Profil mis à jour avec succès',
+        'profile' => $profile
+    ]);
+}
 
     /**
      * Remove the specified resource from storage.
@@ -51,6 +67,7 @@ class FormateurController extends Controller
     public function getSeances(Request $request) {
         return response()->json($request->user()->formateurProfile->seances()->with(['module', 'groupe'])->get());
     }
+    
 
     public function storeAbsences(Request $request) {
         $validated = $request->validate([

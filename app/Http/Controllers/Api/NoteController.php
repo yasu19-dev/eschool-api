@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Note;
+use Illuminate\Container\Attributes\DB;
 use Illuminate\Http\Request;
-
+use Illuminate\Support\Facades\DB as FacadesDB;
 
 class NoteController extends Controller
 {
@@ -29,7 +30,7 @@ public function store(Request $request)
         'stagiaire_id'    => 'required|exists:stagiaire_profiles,id',
         'module_id'       => 'required|exists:modules,id',
         'valeur'          => 'required|numeric|min:0|max:20',
-        'type_evaluation' => 'required|string',
+        'type_evaluation' => 'required|in:cc1,cc2,efm',
         'session'         => 'required|string',
     ]);
 
@@ -44,7 +45,7 @@ public function store(Request $request)
     }
 
     // 3. Création de la note
-    $note = \App\Models\Note::create([
+    $note = Note::create([
         'stagiaire_id'    => $validated['stagiaire_id'],
         'module_id'       => $validated['module_id'],
         'formateur_id'    => $formateur->id, // Plus d'erreur ici !
@@ -81,5 +82,46 @@ public function store(Request $request)
     public function destroy(string $id)
     {
         //
+    }
+    // NoteController.php
+
+public function storeBulk(Request $request)
+    {
+        // 1. Validation stricte (doit correspondre à ta migration)
+        $validated = $request->validate([
+            'module_id'       => 'required|exists:modules,id',
+            'type_evaluation' => 'required|in:cc1,cc2,efm',
+            'session'         => 'required|string',
+            'semestre'        => 'required|string', // Validation du semestre
+            'notes'           => 'required|array',
+            'notes.*.stagiaire_id' => 'required|exists:stagiaire_profiles,id',
+            'notes.*.valeur'       => 'nullable|numeric|min:0|max:20',
+        ]);
+
+        // 2. Récupération de l'ID du formateur via son profil
+        $formateurId = $request->user()->formateurProfile->id;
+
+        // 3. Utilisation d'une transaction pour garantir l'intégrité des données
+        FacadesDB::transaction(function () use ($validated, $formateurId) {
+            foreach ($validated['notes'] as $noteItem) {
+                // On n'enregistre que si une valeur est saisie
+                if ($noteItem['valeur'] !== null && $noteItem['valeur'] !== '') {
+                    Note::updateOrCreate(
+                        [
+                            'stagiaire_id'    => $noteItem['stagiaire_id'],
+                            'module_id'       => $validated['module_id'],
+                            'type_evaluation' => $validated['type_evaluation'],
+                        ],
+                        [
+                            'formateur_id'    => $formateurId,
+                            'valeur'          => $noteItem['valeur'],
+                            'session'         => $validated['session'],
+                        ]
+                    );
+                }
+            }
+        });
+
+        return response()->json(['message' => 'Toutes les notes ont été enregistrées avec succès !'], 200);
     }
 }

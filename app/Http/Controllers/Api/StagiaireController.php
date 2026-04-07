@@ -117,6 +117,20 @@ class StagiaireController extends Controller
         return response()->json($request->user()->stagiaireProfile->absences()->with('seance.module')->get());
         }
 
+    // StagiaireController.php
+
+    public function getByGroupe($groupe_id)
+    {
+        // On récupère tous les profils stagiaires liés à cet ID de groupe
+        $stagiaires = \App\Models\StagiaireProfile::where('groupe_id', $groupe_id)->get();
+
+        if ($stagiaires->isEmpty()) {
+            return response()->json(['message' => 'Aucun stagiaire trouvé pour ce groupe'], 404);
+        }
+
+        return response()->json($stagiaires);
+    }
+
         // 2. Récupérer l'emploi du temps du groupe
         // Route: GET /stagiaire/schedule
 // app/Http/Controllers/Api/StagiaireController.php

@@ -15,7 +15,6 @@ class AuthController extends Controller
             'password' => 'required',
         ]);
 
-        // On cherche l'utilisateur sans charger la relation 'roles' qui n'existe plus
         $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
@@ -25,74 +24,65 @@ class AuthController extends Controller
         // Création du token via Sanctum (compatible UUID)
         $token = $user->createToken('ismontic_token')->plainTextToken;
 
-        // Le rôle est maintenant un champ direct dans la table users
-        $roleCode = $user->role;
-
-        // Récupération du profil et du sous-rôle pour les admins
-        $profile = null;
-        $adminSubRole = null;
-
+        // --- 🪄 LA RÉPARATION : EAGER LOADING ---
+        // On charge officiellement la relation pour qu'elle apparaisse dans le JSON
         if ($user->isAdmin()) {
-            $profile = $user->adminProfile; // Utilisation de la relation Eloquent
-            $adminSubRole = $profile ? $profile->role_admin : null; // 'directeur' ou 'responsable_stagiaire'
+            $user->load('adminProfile');
+            $profile = $user->adminProfile;
+            $user->adminSubRole = $profile ? $profile->role_admin : null;
         } elseif ($user->isFormateur()) {
+            $user->load('formateurProfile'); // Charge matricule, cin, bio, etc.
             $profile = $user->formateurProfile;
         } elseif ($user->isStagiaire()) {
+            $user->load('stagiaireProfile');
             $profile = $user->stagiaireProfile;
         }
 
-        // On attache les infos pour le Front-End React
+        // On crée une propriété 'name' propre pour éviter les bugs dans React
+        $user->name = $profile ? ($profile->prenom . ' ' . $profile->nom) : 'Utilisateur';
+
+        // On garde les propriétés individuelles pour la compatibilité
         $user->nom = $profile ? $profile->nom : '';
         $user->prenom = $profile ? $profile->prenom : '';
-
-        /** * Important : On ajoute 'adminSubRole' pour que la Sidebar React
-         * puisse filtrer les menus correctement !
-         */
-        $user->adminSubRole = $adminSubRole;
 
         return response()->json([
             'token' => $token,
             'user' => $user,
-            'role' => $roleCode // admin, formateur ou stagiaire
+            'role' => $user->role
         ]);
     }
 
     public function me(Request $request)
     {
-        // On renvoie l'utilisateur avec ses informations de profil chargées
         $user = $request->user();
 
+        // On s'assure que le profil est rechargé si l'utilisateur rafraîchit la page
         if ($user->isAdmin()) {
             $user->load('adminProfile');
             $user->adminSubRole = $user->adminProfile->role_admin;
+            $profile = $user->adminProfile;
         } elseif ($user->isFormateur()) {
             $user->load('formateurProfile');
+            $profile = $user->formateurProfile;
         } else {
             $user->load('stagiaireProfile');
+            $profile = $user->stagiaireProfile;
         }
+
+        $user->name = $profile ? ($profile->prenom . ' ' . $profile->nom) : 'Utilisateur';
 
         return response()->json($user);
     }
 
-     public function logout(Request $request)
-
+    public function logout(Request $request)
     {
-
-        // On extrait le token et on indique explicitement sa vraie classe à VS Code
-
         /** @var \Laravel\Sanctum\PersonalAccessToken $token */
-
         $token = $request->user()->currentAccessToken();
 
-
-
-        // La ligne rouge va disparaître car PersonalAccessToken possède bien la méthode delete() !
-
-        $token->delete();
-
-
+        if ($token) {
+            $token->delete();
+        }
 
         return response()->json(['message' => 'Déconnexion réussie']);
-
     }
 }

@@ -46,13 +46,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 👨‍🏫 ESPACE FORMATEUR
     Route::prefix('formateur')->group(function () {
-        Route::get('/dashboard', [FormateurController::class, 'index']);
+    Route::get('/profile-details', [FormateurController::class, 'me']); // Utilise la méthode me existante
+    Route::put('/profile/update', [FormateurController::class, 'updateProfile']); // Nouvelle route
+    Route::get('/dashboard', [FormateurController::class, 'index']);
         Route::get('/seances', [FormateurController::class, 'getSeances']);
         Route::post('/absences/store', [FormateurController::class, 'storeAbsences']);
         Route::post('/notes/store', [FormateurController::class, 'storeNote']);
         Route::post('/absences', [AbsenceController::class, 'store']); // Saisie des absences
         Route::post('/notes', [NoteController::class, 'store']);
         Route::post('/annonces', [AnnonceController::class, 'store']);
+        Route::post('/notes/bulk', [NoteController::class, 'storeBulk']);
+        Route::get('/groupes/{groupe_id}/stagiaires', [StagiaireController::class, 'getByGroupe']);
     });
 
     // 🏛️ ESPACE DIRECTION
