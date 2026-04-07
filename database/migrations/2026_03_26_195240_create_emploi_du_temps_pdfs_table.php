@@ -12,13 +12,13 @@ return new class extends Migration
     public function up(): void
 {
     Schema::create('emplois_du_temps_pdf', function (Blueprint $table) {
-    $table->uuid('id')->primary();
-    $table->foreignUuid('groupe_id')->constrained('groupes')->cascadeOnDelete();
-    $table->string('titre'); // Ex: "Emploi du temps S2"
-    $table->string('fichier_url'); // Le lien vers le fichier Excel/PDF stocké sur le serveur
-    $table->string('format')->default('xlsx'); // Pour savoir si c'est Excel ou PDF
-    $table->timestamps();
-});
+        $table->uuid('id')->primary();
+        $table->foreignUuid('groupe_id')->constrained('groupes')->cascadeOnDelete();
+        $table->string('titre');
+        $table->string('fichier_url');
+        $table->string('format');
+        $table->timestamps();
+    });
 }
 
     /**

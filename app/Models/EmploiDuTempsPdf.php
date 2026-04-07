@@ -3,11 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Concerns\HasUuids; // Importe le trait
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EmploiDuTempsPdf extends Model
 {
-    use HasUuids; // Utilise le trait ici
+    use HasUuids;
 
     protected $table = 'emplois_du_temps_pdf';
 
@@ -18,15 +19,13 @@ class EmploiDuTempsPdf extends Model
         'format'
     ];
 
-    // Accesseur pour transformer 'fichier_url' en lien cliquable pour React
     protected $appends = ['full_url'];
 
-    public function getFullUrlAttribute()
-    {
+    public function getFullUrlAttribute() {
         return asset('storage/' . $this->fichier_url);
     }
 
-    public function groupe()
+    public function groupe(): BelongsTo
     {
         return $this->belongsTo(Groupe::class, 'groupe_id');
     }

@@ -9,7 +9,15 @@ class Groupe extends Model
 {
     use HasUuids;
     protected $guarded = [];
-
+public function emplois()
+{
+    return $this->belongsToMany(
+        \App\Models\Emploi::class,
+        'emploi_groupe',
+        'group_id',
+        'emploi_id'
+    );
+}
     public function seances()
     {
         return $this->hasMany(Seance::class);

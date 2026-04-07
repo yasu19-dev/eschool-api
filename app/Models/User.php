@@ -40,6 +40,10 @@ class User extends Authenticatable
     protected $dates = ['deleted_at'];
 
     // --- RELATIONS AVEC LES PROFILS ---
+    public function groupe()
+{
+    return $this->belongsTo(Groupe::class, 'group_id');
+}
 
     public function stagiaireProfile()
     {
