@@ -83,7 +83,7 @@ class NoteController extends Controller
             'session'         => 'required|string',
             'notes'           => 'required|array',
             'notes.*.stagiaire_id' => 'required|exists:stagiaire_profiles,id',
-            'notes.*.valeur'       => 'nullable|numeric|min:0|max:20',
+            'notes.*.valeur'       => 'nullable|numeric|min:0|max:40',
         ]);
 
         $formateurId = $request->user()->formateurProfile->id;
