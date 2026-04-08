@@ -36,7 +36,12 @@ public function getPendingJustifications() {
     public function validateAttestation($id)
 {
     $demande = DemandeAttestation::findOrFail($id);
-    $demande->update(['statut' => 'Prête', 'date_edition' => now()]);
+    //correction ✅
+    // $demande->update(['statut' => 'Prête', 'date_edition' => now()]); // incorrect
+    $demande->update([
+            'status' => 'Prête pour récupération',
+            'date_livraison_prevue' => now()
+        ]);
 
     return response()->json(['message' => 'L\'attestation est marquée comme prête.']);
 }

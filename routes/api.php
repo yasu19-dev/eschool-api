@@ -27,6 +27,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 👤 Session & Profil
     Route::get('/me', [AuthController::class, 'me']);
+         // ? Route pour réinitialiser le mot de passe d'un utilisateur (par exemple, en cas d'oubli)
+Route::put('/director/users/{user}/reset-password', [UserController::class, 'resetPassword']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // 🎓 ESPACE STAGIAIRE
@@ -55,11 +57,18 @@ Route::middleware('auth:sanctum')->group(function () {
     // 🏛️ ESPACE DIRECTION
     Route::prefix('director')->group(function () {
         Route::get('/dashboard', [DirectorController::class, 'index']);
+        // NOUVELLE ROUTE SÉCURISÉE POUR LES GROUPES
+        Route::get('/groupes', [DirectorController::class, 'getGroupes']);
+        // NOUVELLE ROUTE SÉCURISÉE POUR LES SPÉCIALITÉS
+        Route::get('/specialites', [DirectorController::class, 'getSpecialites']);
         Route::get('/stats/absences', [AbsenceController::class, 'globalStats']);
         // Gère index, store, show, update, destroy automatiquement
         Route::apiResource('users', UserController::class);
         Route::post('/import/stagiaires', [ImportController::class, 'importStagiaires']);
         Route::delete('/users/{user}', [DirectorController::class, 'deleteUser']);
+        Route::put('/users/{id}/restore', [UserController::class, 'restore']);
+        Route::get('/director/users/trashed', [DirectorController::class, 'getDeletedUsers']);
+
     });
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE
