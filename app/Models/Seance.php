@@ -42,8 +42,9 @@ class Seance extends Model
 
     public function groupe()
     {
-        return $this->belongsTo(Groupe::class);
+        return $this->belongsTo(Groupe::class,'groupe_id');
     }
+    // app/Models/Seance.php
 
     /**
      * Relation mise à jour : On pointe désormais vers le modèle Absence.
