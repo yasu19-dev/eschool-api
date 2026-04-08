@@ -11,11 +11,11 @@ class FormateurProfile extends Model
     protected $fillable = [
     'id',
     'user_id',
-    'matricule', 
+    'matricule',
     'nom',
     'prenom',
     'specialite',
-    // ... autres champs si nécessaire
+    'email_professionnel',
 ];
 
     public function user()

@@ -56,20 +56,18 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
 
     // 🏛️ ESPACE DIRECTION
     Route::prefix('director')->group(function () {
-        Route::get('/dashboard', [DirectorController::class, 'index']);
-        // NOUVELLE ROUTE SÉCURISÉE POUR LES GROUPES
-        Route::get('/groupes', [DirectorController::class, 'getGroupes']);
-        // NOUVELLE ROUTE SÉCURISÉE POUR LES SPÉCIALITÉS
-        Route::get('/specialites', [DirectorController::class, 'getSpecialites']);
-        Route::get('/stats/absences', [AbsenceController::class, 'globalStats']);
-        // Gère index, store, show, update, destroy automatiquement
-        Route::apiResource('users', UserController::class);
-        Route::post('/import/stagiaires', [ImportController::class, 'importStagiaires']);
-        Route::delete('/users/{user}', [DirectorController::class, 'deleteUser']);
-        Route::put('/users/{id}/restore', [UserController::class, 'restore']);
-        Route::get('/director/users/trashed', [DirectorController::class, 'getDeletedUsers']);
+    Route::get('/users', [DirectorController::class, 'getUsers']);
+    Route::get('/users/trashed', [DirectorController::class, 'trashed']); // ✅ Doit s'appeler 'trashed'
+    Route::post('/users', [DirectorController::class, 'store']);
+    Route::delete('/users/{user}', [DirectorController::class, 'deleteUser']);
+    Route::put('/users/{id}/restore', [DirectorController::class, 'restore']);
 
-    });
+    Route::get('/groupes', [DirectorController::class, 'getGroupes']);
+    Route::get('/specialites', [DirectorController::class, 'getSpecialites']);
+    Route::post('/import-stagiaires', [ImportController::class, 'importStagiaires']);
+    // Ta route reset password peut rester dans UserController si tu veux
+    Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+});
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE
     Route::prefix('responsable-stagiaire')->group(function () {
