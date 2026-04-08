@@ -53,16 +53,17 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/profile/update', [FormateurController::class, 'updateProfile']);
     Route::post('/upload-photo', [FormateurController::class, 'uploadPhoto']);
     Route::get('/dashboard', [FormateurController::class, 'index']);
+    Route::post('/annonces', [AnnonceController::class, 'store']);
     Route::get('/seances', [FormateurController::class, 'getSeances']);
     Route::post('/absences/store', [FormateurController::class, 'storeAbsences']);
     Route::post('/notes/store', [FormateurController::class, 'storeNote']);
     Route::post('/absences', [AbsenceController::class, 'store']); // Saisie des absences
     // Route::post('/notes', [NoteController::class, 'store']);
     Route::get('/notes', [NoteController::class, 'getNotesForFormateur']);
-    Route::post('/annonces', [AnnonceController::class, 'store']);
     Route::put('/notes/{id}', [NoteController::class, 'update']);
     Route::post('/notes/bulk', [NoteController::class, 'storeBulk']);
     Route::get('/groupes/{groupe_id}/stagiaires', [StagiaireController::class, 'getByGroupe']);
+    Route::get('/groupes', [FormateurController::class, 'getGroupes']);
     Route::put('/settings', [FormateurController::class, 'updateSettings']);
 
     });

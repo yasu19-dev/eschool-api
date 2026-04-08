@@ -39,7 +39,7 @@ public function store(Request $request)
         }
 
         // 2. Création
-        $annonce = \App\Models\Annonce::create([
+        $annonce = Annonce::create([
             'formateur_id' => $formateur->id,
             'groupe_id'    => $validated['groupe_id'],
             'titre'        => $validated['titre'],
