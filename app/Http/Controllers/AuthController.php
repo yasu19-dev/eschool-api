@@ -21,6 +21,11 @@ class AuthController extends Controller
             return response()->json(['message' => 'Identifiants incorrects'], 401);
         }
 
+        // --- 🆕 MODIFICATION : MISE À JOUR DE LA DERNIÈRE CONNEXION ---
+        // On enregistre l'heure actuelle au moment précis où le mot de passe est validé
+        $user->update([
+            'lastLogin' => now()
+        ]);
         // Création du token via Sanctum (compatible UUID)
         $token = $user->createToken('ismontic_token')->plainTextToken;
 

@@ -74,25 +74,23 @@ public function validateAbsence($id)
    public function validateAttestation(Request $request, $id)
 {
     try {
-        // 1. Cherche la demande par son UUID
         $demande = DemandeAttestation::findOrFail($id);
-
-        // 2. Mise à jour selon les ENUM de ta migration
+        //correction ✅
+        // $demande->update(['statut' => 'Prête', 'date_edition' => now()]); // incorrect
         $demande->update([
-            'status' => 'Prête pour récupération',
-            // On peut aussi mettre à jour la date si elle est envoyée depuis React/Postman
-            'date_livraison_prevue' => $request->input('date_livraison', now()->addDays(2))
-        ]);
+                'status' => 'Prête pour récupération',
+                'date_livraison_prevue' => now()
+            ]);
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'L\'attestation est prête. Le stagiaire peut venir la récupérer.',
-            'data' => [
-                'id' => $demande->id,
-                'nouveau_statut' => $demande->status,
-                'disponible_le' => $demande->date_livraison_prevue
-            ]
-        ], 200);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'L\'attestation est prête. Le stagiaire peut venir la récupérer.',
+                'data' => [
+                    'id' => $demande->id,
+                    'nouveau_statut' => $demande->status,
+                    'disponible_le' => $demande->date_livraison_prevue
+                ]
+            ], 200);
 
     } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
         return response()->json([

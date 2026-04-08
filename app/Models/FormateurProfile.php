@@ -8,7 +8,15 @@ use Illuminate\Database\Eloquent\Model;
 class FormateurProfile extends Model
 {
     use HasUuids;
-    protected $guarded = [];
+    protected $fillable = [
+    'id',
+    'user_id',
+    'matricule',
+    'nom',
+    'prenom',
+    'specialite',
+    'email_professionnel',
+];
 
     public function user()
     {
