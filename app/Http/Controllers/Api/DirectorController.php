@@ -113,8 +113,25 @@ class DirectorController extends Controller
             ['id' => 'EN', 'nom' => 'Anglais Technique'],
             ['id' => 'BDD', 'nom' => 'Base de Données'],
             ['id' => 'ALGO', 'nom' => 'Algorithmique'],
+            ['id' => 'PIE', 'nom' => 'Programme d\'innovation Entrepreneuriale'],
 
 
         ]);
     }
+    // ✅ À ajouter à la fin de DirectorController.php
+public function getSeancesByGroupe($id)
+{
+    // On récupère les séances avec les infos du module et du formateur
+    return \App\Models\Seance::where('groupe_id', $id)
+        ->with(['module', 'formateur'])
+        ->get();
+}
+
+public function getSeancesByFormateur($id)
+{
+    // On récupère les séances avec les infos du module et du groupe
+    return \App\Models\Seance::where('formateur_id', $id)
+        ->with(['module', 'groupe'])
+        ->get();
+}
 }
