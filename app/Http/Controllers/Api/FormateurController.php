@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Absence;
+use App\Models\Groupe;
 use App\Models\Note;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -153,5 +154,20 @@ public function updateSettings(Request $request)
     $profile->update($validated);
 
     return response()->json(['message' => 'Paramètres mis à jour !']);
+}
+// app/Http/Controllers/Api/FormateurController.php
+
+
+
+public function getGroupes(Request $request)
+{
+    $formateurId = $request->user()->formateurProfile->id;
+
+    // On récupère les groupes qui ont au moins une séance avec ce formateur
+    $groupes = Groupe::whereHas('seances', function($query) use ($formateurId) {
+        $query->where('formateur_id', $formateurId);
+    })->get();
+
+    return response()->json($groupes);
 }
 }
