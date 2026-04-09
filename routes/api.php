@@ -79,6 +79,10 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
     Route::get('/groupes', [DirectorController::class, 'getGroupes']);
     Route::get('/specialites', [DirectorController::class, 'getSpecialites']);
     Route::post('/import-stagiaires', [ImportController::class, 'importStagiaires']);
+    Route::post('/import-timetable', [ImportController::class, 'importTimetable']);
+    // ✅ Ajoute ces deux routes ici :
+Route::get('/groupes/{id}/seances', [DirectorController::class, 'getSeancesByGroupe']);
+Route::get('/formateurs/{id}/seances', [DirectorController::class, 'getSeancesByFormateur']);
     // Ta route reset password peut rester dans UserController si tu veux
     Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
 });
