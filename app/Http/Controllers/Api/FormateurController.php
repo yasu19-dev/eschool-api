@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Absence;
 use App\Models\Groupe;
 use App\Models\Note;
+use App\Models\Seance;
+use App\Models\StagiaireProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -14,10 +16,74 @@ class FormateurController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
-        //
-    }
+    // app/Http/Controllers/Api/FormateurController.php
+
+public function index(Request $request)
+{
+    $formateurId = $request->user()->formateurProfile->id;
+    $today = now()->format('yyyy-MM-dd');
+    $startOfWeek = now()->startOfWeek()->format('yyyy-MM-dd');
+    $endOfWeek = now()->endOfWeek()->format('yyyy-MM-dd');
+
+    // 1. Cours aujourd'hui
+    $todayClassesCount = Seance::where('formateur_id', $formateurId)
+        ->where('date', $today)
+        ->count();
+
+    // 2. Nombre total de stagiaires uniques enseignés
+    $totalStudents = StagiaireProfile::whereIn('groupe_id', function($query) use ($formateurId) {
+        $query->select('groupe_id')->from('seances')->where('formateur_id', $formateurId);
+    })->count();
+
+    // 3. Absences de la semaine
+    $weekAbsencesCount = Absence::whereHas('seance', function($q) use ($formateurId) {
+        $q->where('formateur_id', $formateurId);
+    })->whereBetween('date', [$startOfWeek, $endOfWeek])->count();
+
+    // 4. Prochains cours (Aujourd'hui et futur proche)
+    $upcomingClasses = Seance::where('formateur_id', $formateurId)
+        ->where('date', '>=', $today)
+        ->with(['groupe', 'module'])
+        ->orderBy('date', 'asc')
+        ->orderBy('creneau', 'asc')
+        ->take(4)
+        ->get();
+
+    // 5. Absences récentes enregistrées
+    $recentAbsences = Absence::whereHas('seance', function($q) use ($formateurId) {
+        $q->where('formateur_id', $formateurId);
+    })->with(['stagiaire', 'seance.groupe'])
+      ->orderBy('date', 'desc')
+      ->orderBy('created_at', 'desc')
+      ->take(5)
+      ->get();
+
+    // 6. Mes modules (calcul du nombre de stagiaires par module)
+    $myModules = Seance::where('formateur_id', $formateurId)
+        ->with('module')
+        ->get()
+        ->groupBy('module_id')
+        ->map(function ($group) {
+            $module = $group->first()->module;
+            return [
+                'name' => $module->intitule ?? $module->nom,
+                'students' => StagiaireProfile::whereIn('groupe_id', $group->pluck('groupe_id'))->count(),
+                'color' => '#' . substr(md5($module->id), 0, 6) // Couleur générée aléatoirement par ID
+            ];
+        })->values();
+
+    return response()->json([
+        'stats' => [
+            'todayClasses' => $todayClassesCount,
+            'totalStudents' => $totalStudents,
+            'weekAbsences' => $weekAbsencesCount,
+            'attendanceRate' => '94%', // Exemple statique ou calculable si besoin
+        ],
+        'upcomingClasses' => $upcomingClasses,
+        'recentAbsences' => $recentAbsences,
+        'myModules' => $myModules
+    ]);
+}
 
     /**
      * Store a newly created resource in storage.
