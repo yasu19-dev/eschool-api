@@ -213,7 +213,12 @@ public function postAttestation(Request $request)
 
 public function getModules(Request $request) {
     // On récupère directement les modules du groupe du stagiaire connecté
-    $modules = $request->user()->stagiaireProfile->groupe->modules;
+    $modules = $request->user()->stagiaireProfile->groupe->seances()
+                ->with('module') // On charge la relation module pour éviter les N+1
+                ->get()
+                ->pluck('module') // On ne garde que les modules
+                ->unique('id') // On s'assure d'avoir des modules uniques
+                ->values(); // On réindexe la collection
 
     return response()->json($modules);
 }
