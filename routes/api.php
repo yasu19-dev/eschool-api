@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\EmploiController;
 use App\Http\Controllers\Api\GroupeController; // Assurez-vous que ce controller existe
+use App\Http\Controllers\Api\SeanceController;
 
 // --- 🔓 ROUTES PUBLIQUES ---
 Route::post('/login', [AuthController::class, 'login']);
@@ -48,6 +49,7 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
 
         // 📅 Emploi du temps (Option B : filtré par le group_id du stagiaire)
         Route::get('/schedule', [EmploiController::class, 'getForStagiaire']);
+        Route::get('/mes-seances', [EmploiController::class, 'getMesSeances']);
     });
 
     // 👨‍🏫 ESPACE FORMATEUR

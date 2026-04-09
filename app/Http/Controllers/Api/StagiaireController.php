@@ -7,10 +7,13 @@ use App\Http\Resources\Stagiaire\StagiaireProfileResource;
 use App\Models\Reclamation;
 use App\Models\DemandeAttestation;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class StagiaireController extends Controller
 {
+   
     /**
      * Display a listing of the resource.
      */
