@@ -25,6 +25,12 @@ public function storeBulk(Request $request)
         'stagiaires.*.est_en_retard' => 'required|boolean',
     ]);
 
+    // 1. On efface TOUT pour cette séance et cette date avant de réécrire
+    // Cela permet de gérer ceux qui redeviendraient "Présents"
+    Absence::where('seance_id', $validated['seance_id'])
+                        ->where('date', $validated['date'])
+                        ->delete();
+
     foreach ($validated['stagiaires'] as $item) {
         Absence::updateOrCreate(
             [
