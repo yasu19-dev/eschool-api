@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Seance extends Model
 {
-    use HasUuids;
+    use HasUuids; // Utilisation des UUIDs pour les identifiants uniques
 
     /**
      * Le nom de la table correspondant à la migration.
@@ -24,22 +24,45 @@ class Seance extends Model
         'date',
         'creneau',
         'salle',
-        'type',
         'commentaire_prof'
+        // Note : On ne met pas 'type' ici car il est calculé dynamiquement
     ];
+
+    // --- ACCESSEURS (Logique métier automatique) ---
+
+    /**
+     * Détermine dynamiquement le type de séance (Présentiel / Distanciel).
+     * Si la salle est vide ou contient "A DISTANCE", c'est du distanciel.
+     */
+    public function getTypeAttribute()
+    {
+        if (!$this->salle || strtoupper($this->salle) === 'A DISTANCE') {
+            return 'distanciel';
+        }
+        return 'présentiel';
+    }
 
     // --- RELATIONS ---
 
+    /**
+     * Relation vers le profil du formateur
+     */
     public function formateur()
     {
         return $this->belongsTo(FormateurProfile::class, 'formateur_id');
     }
 
+    /**
+     * Relation vers le module enseigné
+     */
     public function module()
     {
         return $this->belongsTo(Module::class);
     }
 
+    /**
+     * Relation vers le groupe (classe)
+     */
     public function groupe()
     {
         return $this->belongsTo(Groupe::class,'groupe_id');
@@ -47,20 +70,28 @@ class Seance extends Model
     // app/Models/Seance.php
 
     /**
-     * Relation mise à jour : On pointe désormais vers le modèle Absence.
+     * Relation vers les absences marquées durant cette séance
      */
     public function absences()
     {
         return $this->hasMany(Absence::class, 'seance_id');
     }
-    public function countAbsentsReels()
-    {
-            // On compte ceux qui ne sont pas marqués "en retard"
-            return $this->absences()->where('est_en_retard', false)->count();
-        }
 
+    /**
+     * Relation vers les justificatifs liés à cette séance
+     */
     public function justificatifs()
     {
         return $this->hasMany(Justificatif::class, 'seance_id');
+    }
+
+    // --- FONCTIONS DE CALCUL ---
+
+    /**
+     * Compte le nombre d'absents réels (exclut les retards)
+     */
+    public function countAbsentsReels()
+    {
+        return $this->absences()->where('est_en_retard', false)->count();
     }
 }

@@ -29,6 +29,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 👤 Session & Profil
     Route::get('/me', [AuthController::class, 'me']);
+         // ? Route pour réinitialiser le mot de passe d'un utilisateur (par exemple, en cas d'oubli)
+Route::put('/director/users/{user}/reset-password', [UserController::class, 'resetPassword']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // 🎓 ESPACE STAGIAIRE
@@ -75,20 +77,22 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // 🏛️ ESPACE DIRECTION
     Route::prefix('director')->group(function () {
-        Route::get('/dashboard', [DirectorController::class, 'index']);
-        Route::get('/stats/absences', [AbsenceController::class, 'globalStats']);
+    Route::get('/users', [DirectorController::class, 'getUsers']);
+    Route::get('/users/trashed', [DirectorController::class, 'trashed']); // ✅ Doit s'appeler 'trashed'
+    Route::post('/users', [DirectorController::class, 'store']);
+    Route::delete('/users/{user}', [DirectorController::class, 'deleteUser']);
+    Route::put('/users/{id}/restore', [DirectorController::class, 'restore']);
 
-        // 📅 Gestion des Emplois du temps
-        // Cette route gère l'importation avec l'option "Tous les groupes" ou sélection multiple
-        Route::post('/emplois/import', [EmploiController::class, 'store']);
-
-        // 👥 Gestion des Groupes (pour les checkboxes dans React)
-        Route::get('/groupes', [GroupeController::class, 'index']);
-
-        Route::apiResource('users', UserController::class);
-        Route::post('/import/stagiaires', [ImportController::class, 'importStagiaires']);
-        Route::delete('/users/{user}', [DirectorController::class, 'deleteUser']);
-    });
+    Route::get('/groupes', [DirectorController::class, 'getGroupes']);
+    Route::get('/specialites', [DirectorController::class, 'getSpecialites']);
+    Route::post('/import-stagiaires', [ImportController::class, 'importStagiaires']);
+    Route::post('/import-timetable', [ImportController::class, 'importTimetable']);
+    // ✅ Ajoute ces deux routes ici :
+Route::get('/groupes/{id}/seances', [DirectorController::class, 'getSeancesByGroupe']);
+Route::get('/formateurs/{id}/seances', [DirectorController::class, 'getSeancesByFormateur']);
+    // Ta route reset password peut rester dans UserController si tu veux
+    Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+});
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE
     Route::prefix('responsable-stagiaire')->group(function () {

@@ -8,7 +8,21 @@ use Illuminate\Database\Eloquent\Model;
 class StagiaireProfile extends Model
 {
     use HasUuids;
-    protected $guarded = [];
+    // * les champs suivants sont "fillable" (assignables en masse) pour la création et la mise à jour
+    protected $fillable = [
+        'id',
+        'user_id',
+        'cef',
+        'cin',
+        'nom',
+        'prenom',
+        'groupe_id',
+        'date_naissance',
+        'lieu_naissance',
+        'adresse',
+        'telephone',
+        'annee_scolaire'
+    ];
    public function user()
     {
         return $this->belongsTo(User::class);
