@@ -13,32 +13,39 @@ class AbsenceController extends Controller
      */
     // AbsenceController.php
 
-public function store(Request $request)
+// app/Http/Controllers/Api/AbsenceController.php
+
+public function storeBulk(Request $request)
 {
-    // 1. Validation des données
     $validated = $request->validate([
         'seance_id' => 'required|exists:seances,id',
+        'date' => 'required|date', // On valide la date reçue
         'stagiaires' => 'required|array',
         'stagiaires.*.id' => 'required|exists:stagiaire_profiles,id',
         'stagiaires.*.est_en_retard' => 'required|boolean',
     ]);
 
-    $formateurId = $request->user()->formateurProfile->id;
+    // 1. On efface TOUT pour cette séance et cette date avant de réécrire
+    // Cela permet de gérer ceux qui redeviendraient "Présents"
+    Absence::where('seance_id', $validated['seance_id'])
+                        ->where('date', $validated['date'])
+                        ->delete();
 
-    // 2. Vérification de sécurité : La séance appartient-elle bien au formateur ?
-    $seance = \App\Models\Seance::where('id', $validated['seance_id'])
-                                ->where('formateur_id', $formateurId)
-                                ->firstOrFail();
-
-    // 3. Enregistrement massif
     foreach ($validated['stagiaires'] as $item) {
         Absence::updateOrCreate(
-            ['seance_id' => $seance->id, 'stagiaire_id' => $item['id']],
-            ['est_en_retard' => $item['est_en_retard'], 'est_justifie' => false]
+            [
+                'seance_id' => $validated['seance_id'],
+                'stagiaire_id' => $item['id'],
+                'date' => $validated['date'] // <--- CRUCIAL : On cherche par date aussi !
+            ],
+            [
+                'est_en_retard' => $item['est_en_retard'],
+                'est_justifie' => false
+            ]
         );
     }
 
-    return response()->json(['message' => 'Appel terminé et enregistré !']);
+    return response()->json(['message' => 'Appel enregistré !']);
 }
     public function globalStats()
     {
@@ -57,4 +64,40 @@ public function store(Request $request)
         $user = $request->user();
         return response()->json($user->stagiaireProfile->absences()->with('seance.module')->get());
     }
+
+    // app/Http/Controllers/Api/AbsenceController.php
+
+public function history(Request $request)
+{
+    $formateurId = $request->user()->formateurProfile->id;
+
+    return Absence::whereHas('seance', function ($query) use ($formateurId) {
+        $query->where('formateur_id', $formateurId);
+    })
+    ->with(['seance.groupe', 'seance.module'])
+    ->select('seance_id', 'date')
+    ->selectRaw('count(case when est_en_retard = 0 then 1 end) as absents_count')
+    ->selectRaw('count(case when est_en_retard = 1 then 1 end) as retards_count')
+    ->groupBy('seance_id', 'date')
+    ->orderBy('date', 'desc')
+    ->get();
+}
+
+// Nouvelle méthode pour charger les absences d'une séance précise lors d'une rectification
+public function getAbsencesBySession(Request $request)
+{
+    // Debug : On force Laravel à nous dire ce qu'il reçoit
+    // return response()->json($request->all());
+
+    $validated = $request->validate([
+        'seance_id' => 'required',
+        'date'      => 'required|date',
+    ]);
+
+    $absences = Absence::where('seance_id', $validated['seance_id'])
+        ->where('date', $validated['date'])
+        ->get(['stagiaire_id', 'est_en_retard']);
+
+    return response()->json($absences);
+}
 }
