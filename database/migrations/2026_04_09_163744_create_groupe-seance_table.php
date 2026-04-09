@@ -9,10 +9,12 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-    public function up(): void
-    {
-       Schema::table('users', function (Blueprint $table) {
-        $table->softDeletes(); // Ajoute la colonne 'deleted_at'
+   public function up(): void
+{
+    Schema::create('groupe-seance', function (Blueprint $table) {
+        $table->id();
+        $table->foreignUuid('seance_id')->constrained('seances')->references('id')->onDelete('cascade');
+        $table->timestamps();
     });
     }
 
@@ -21,8 +23,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-       Schema::table('users', function (Blueprint $table) {
-        $table->dropSoftDeletes();
-    });
+        Schema::dropIfExists('groupe-seance');
     }
 };

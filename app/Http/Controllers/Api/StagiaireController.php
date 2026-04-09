@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Hash;
 
 class StagiaireController extends Controller
 {
-   
+
     /**
      * Display a listing of the resource.
      */
@@ -216,30 +216,30 @@ public function postAttestation(Request $request)
 
 public function getModules(Request $request) {
     // On récupère directement les modules du groupe du stagiaire connecté
-    $modules = $request->user()->stagiaireProfile->groupe->modules;
+    $modules = $request->user()->stagiaireProfile->groupe->seances()->with('module')->get()->pluck('module')->unique('id')->values();
 
     return response()->json($modules);
 }
-public function getEmploi(Request $request)
-{
-    // On récupère le groupe du stagiaire connecté
-    $groupeId = $request->user()->stagiaireProfile->groupe_id;
+// public function getEmploi(Request $request)
+// {
+//     // On récupère le groupe du stagiaire connecté
+//     $groupeId = $request->user()->stagiaireProfile->groupe_id;
 
-    $emploi = \App\Models\EmploiDuTempsPdf::where('groupe_id', $groupeId)
-                ->latest() // On prend le dernier ajouté
-                ->first();
+//     $emploi = \App\Models\EmploiDuTempsPdf::where('groupe_id', $groupeId)
+//                 ->latest() // On prend le dernier ajouté
+//                 ->first();
 
-    if (!$emploi) {
-        return response()->json(['message' => 'Aucun emploi du temps disponible'], 404);
-    }
+//     if (!$emploi) {
+//         return response()->json(['message' => 'Aucun emploi du temps disponible'], 404);
+//     }
 
-    return response()->json([
-        'titre' => $emploi->titre,
-        'url' => $emploi->full_url, // URL générée par l'accesseur
-        'format' => $emploi->format,
-        'date' => $emploi->created_at->format('d/m/Y')
-    ]);
-}
+//     return response()->json([
+//         'titre' => $emploi->titre,
+//         'url' => $emploi->full_url, // URL générée par l'accesseur
+//         'format' => $emploi->format,
+//         'date' => $emploi->created_at->format('d/m/Y')
+//     ]);
+// }
 
 public function uploadPhoto(Request $request)
 {
