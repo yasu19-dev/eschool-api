@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class Groupe extends Model
 {
     use HasUuids;
+    public $incrementing = false; // Désactive l'auto-incrémentation
+    protected $keyType = 'string'; // Dit à Laravel que l'ID est une chaîne (UUID)
     protected $guarded = [];
 public function emplois()
 {
