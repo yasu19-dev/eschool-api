@@ -92,14 +92,20 @@ public function updateProfile(Request $request)
         return response()->json($request->user()->formateurProfile->seances()->with(['module', 'groupe'])->get());
     }
 
+    // app/Http/Controllers/Api/FormateurController.php
+
+public function getHistory(Request $request) {
+    // On renvoie un tableau vide pour l'instant pour stopper l'erreur 500
+    return response()->json([]);
+}
 
     public function storeAbsences(Request $request) {
         $validated = $request->validate([
             'seance_id' => 'required|exists:seances,id',
-            'list' => 'required|array'
+            'stagiaires' => 'required|array'
         ]);
 
-        foreach ($validated['list'] as $item) {
+        foreach ($validated['stagiaires'] as $item) {
             Absence::updateOrCreate(
                 ['seance_id' => $validated['seance_id'], 'stagiaire_id' => $item['id']],
                 ['est_en_retard' => $item['retard'], 'est_justifie' => false]

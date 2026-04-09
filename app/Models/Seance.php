@@ -65,8 +65,9 @@ class Seance extends Model
      */
     public function groupe()
     {
-        return $this->belongsTo(Groupe::class);
+        return $this->belongsTo(Groupe::class,'groupe_id');
     }
+    // app/Models/Seance.php
 
     /**
      * Relation vers les absences marquées durant cette séance

@@ -22,11 +22,12 @@ class Absence extends Model
     protected $fillable = [
         'seance_id',
         'stagiaire_id',
+        'date',
         'est_en_retard',
         'est_justifie',
         'motif'
     ];
-    
+
 
     // --- RELATIONS ---
 
