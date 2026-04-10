@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\NoteController;
 use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\EmploiController;
 use App\Http\Controllers\Api\GroupeController; // Assurez-vous que ce controller existe
+use App\Http\Controllers\Api\SeanceController;
 
 // --- 🔓 ROUTES PUBLIQUES ---
 Route::post('/login', [AuthController::class, 'login']);
@@ -48,6 +49,7 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
 
         // 📅 Emploi du temps (Option B : filtré par le group_id du stagiaire)
         Route::get('/schedule', [EmploiController::class, 'getForStagiaire']);
+        Route::get('/mes-seances', [EmploiController::class, 'getMesSeances']);
     });
 
     // 👨‍🏫 ESPACE FORMATEUR
@@ -67,11 +69,17 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
     Route::put('/notes/{id}', [NoteController::class, 'update']);
     Route::post('/notes/bulk', [NoteController::class, 'storeBulk']);
     Route::get('/groupes/{groupe_id}/stagiaires', [StagiaireController::class, 'getByGroupe']);
-    Route::get('/groupes', [FormateurController::class, 'getGroupes']);
+    // Route::get('/groupes', [FormateurController::class, 'getGroupes']);
     Route::put('/settings', [FormateurController::class, 'updateSettings']);
     Route::post('/absences/bulk', [AbsenceController::class, 'storeBulk']);
     Route::get('/absences/historique', [AbsenceController::class, 'history']);
     Route::post('/absences/details', [AbsenceController::class, 'getAbsencesBySession']);
+    // Routes pour les filtres des statistiques
+    Route::get('/groupes', [FormateurController::class, 'getGroupes']);
+    Route::get('/modules', [FormateurController::class, 'getFormateurModules']);
+
+    // Route principale pour les données de statistiques
+    Route::get('/statistics', [FormateurController::class, 'getStatistics']);
 
     });
 

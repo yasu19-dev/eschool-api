@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Absence;
 use App\Models\Groupe;
 use App\Models\Note;
+use App\Models\Seance;
+use App\Models\StagiaireProfile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class FormateurController extends Controller
@@ -169,11 +172,111 @@ public function getGroupes(Request $request)
 {
     $formateurId = $request->user()->formateurProfile->id;
 
-    // On récupère les groupes qui ont au moins une séance avec ce formateur
-    $groupes = Groupe::whereHas('seances', function($query) use ($formateurId) {
-        $query->where('formateur_id', $formateurId);
-    })->get();
+    // // On récupère les groupes qui ont au moins une séance avec ce formateur
+    // $groupes = Groupe::whereHas('seances', function($query) use ($formateurId) {
+    //     $query->where('formateur_id', $formateurId);
+    // })->get();
+    $groupes = Seance::where('formateur_id', $formateurId)
+            ->with('groupe')
+            ->get()
+            ->pluck('groupe')
+            ->unique('id')
+            ->values();
+    // $groupes = Groupe::all();
 
     return response()->json($groupes);
 }
+public function getModules(Request $request) {
+    // On récupère les modules liés aux séances de CE formateur
+    $modules = Seance::where('formateur_id', $request->user()->formateurProfile->id)
+        ->with('module')
+        ->get()
+        ->pluck('module')
+        ->unique('id')
+        ->values();
+
+
+    return response()->json($modules);
+}
+
+public function getStatistics(Request $request)
+    {
+        $formateurId = $request->user()->formateurProfile->id;
+        $groupeId = $request->query('groupe_id');
+        $moduleId = $request->query('module_id');
+        $periode = $request->query('periode', 'semester');
+
+        // --- A. Filtrage de base des séances ---
+        $seanceQuery = Seance::where('formateur_id', $formateurId);
+        if ($groupeId) $seanceQuery->where('groupe_id', $groupeId);
+        if ($moduleId) $seanceQuery->where('module_id', $moduleId);
+
+        $seanceIds = $seanceQuery->pluck('id');
+        $groupeIds = $seanceQuery->pluck('groupe_id')->unique();
+
+        // --- B. Global Stats ---
+        $totalEtudiants = StagiaireProfile::whereIn('groupe_id', $groupeIds)->count();
+        $moyenneG = Note::whereIn('module_id', $seanceQuery->pluck('module_id'))->avg('valeur') ?: 0;
+
+        // Taux de présence (Logique simplifiée)
+        $totalAppels = DB::table('absence_stagiaire') // Ta table pivot d'absences
+            ->whereIn('seance_id', $seanceIds)->count();
+        $totalAbsences = DB::table('absence_stagiaire')
+            ->whereIn('seance_id', $seanceIds)->where('est_en_retard', false)->count();
+
+        $tauxPresence = $totalAppels > 0 ? round(100 - (($totalAbsences / $totalAppels) * 100), 1) : 100;
+
+        // --- C. Moyennes Data (Évolution par mois) ---
+        $moyennesData = Note::whereIn('module_id', $seanceQuery->pluck('module_id'))
+            ->select(DB::raw('MONTHNAME(created_at) as mois'), DB::raw('AVG(valeur) as moyenne'))
+            ->groupBy('mois')
+            ->orderBy('created_at')
+            ->get();
+
+        // --- D. Top Students ---
+        $topStudents = StagiaireProfile::whereIn('groupe_id', $groupeIds)
+            ->with(['user', 'groupe'])
+            ->get()
+            ->map(function($s) {
+                return [
+                    'name' => $s->nom . ' ' . $s->prenom,
+                    'groupe' => $s->groupe->code,
+                    'moyenne' => round(Note::where('stagiaire_id', $s->id)->avg('valeur'), 2) ?: 0
+                ];
+            })->sortByDesc('moyenne')->take(5)->values();
+
+        // --- E. Mentions Data ---
+        $notes = Note::whereIn('module_id', $seanceQuery->pluck('module_id'))->pluck('valeur');
+        $mentions = [
+            ['name' => 'Excellent', 'value' => $notes->where('>=', 16)->count(), 'color' => '#00C9A7'],
+            ['name' => 'Très bien', 'value' => $notes->whereBetween('valeur', [14, 15.99])->count(), 'color' => '#1E88E5'],
+            ['name' => 'Bien', 'value' => $notes->whereBetween('valeur', [12, 13.99])->count(), 'color' => '#FF9800'],
+            ['name' => 'Passable', 'value' => $notes->whereBetween('valeur', [10, 11.99])->count(), 'color' => '#9C27B0'],
+            ['name' => 'Insuffisant', 'value' => $notes->where('<', 10)->count(), 'color' => '#EF5350'],
+        ];
+
+        return response()->json([
+            'globalStats' => [
+                'totalEtudiants' => $totalEtudiants,
+                'moyenneGénérale' => round($moyenneG, 2),
+                'tauxPresence' => $tauxPresence,
+                'tauxReussite' => 85 // Exemple statique ou calculé sur notes > 10
+            ],
+            'moyennesData' => $moyennesData,
+            'presenceData' => [
+                ['module' => 'Global', 'present' => $tauxPresence, 'absent' => 100 - $tauxPresence]
+            ],
+            'notesDistribution' => [
+                ['range' => '0-10', 'count' => $notes->where('<', 10)->count()],
+                ['range' => '10-14', 'count' => $notes->whereBetween('valeur', [10, 14])->count()],
+                ['range' => '14-20', 'count' => $notes->where('>=', 14)->count()],
+            ],
+            'mentionsData' => $mentions,
+            'topStudents' => $topStudents,
+            'strugglingStudents' => [], // À calculer selon le même principe (moyenne < 10)
+            'difficultModules' => [],
+            'successModules' => [],
+            'absencesTendances' => []
+        ]);
+    }
 }

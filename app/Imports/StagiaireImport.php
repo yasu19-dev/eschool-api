@@ -19,7 +19,8 @@ class StagiaireImport implements ToCollection, WithHeadingRow
         DB::transaction(function () use ($rows) {
             foreach ($rows as $row) {
                 // 1. On cherche l'ID du groupe par son code (ex: 'DEV-101')
-                $groupe = Groupe::where('code', $row['groupe'])->first();
+                // Dans StagiaireImport.php
+            $groupe = Groupe::where('code', trim(strtoupper($row['groupe'])))->first();
 
                 // 2. Création de l'utilisateur
                 $user = User::create([
