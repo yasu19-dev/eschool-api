@@ -79,7 +79,7 @@ class NoteController extends Controller
     {
         $validated = $request->validate([
             'module_id'       => 'required|exists:modules,id',
-            'type_evaluation' => 'required|in:cc1,cc2,efm',
+            'type_evaluation' => 'required|in:cc1,cc2,cc3,efm',
             'session'         => 'required|string',
             'notes'           => 'required|array',
             'notes.*.stagiaire_id' => 'required|exists:stagiaire_profiles,id',
@@ -128,7 +128,7 @@ class NoteController extends Controller
     // On valide que les paramètres sont présents dans l'URL
     $request->validate([
         'module_id' => 'required|exists:modules,id',
-        'type'      => 'required|in:cc1,cc2,efm',
+        'type'      => 'required|in:cc1,cc2,cc3,efm',
     ]);
 
     // On récupère les notes filtrées

@@ -17,7 +17,7 @@ return new class extends Migration
     $table->foreignUuid('module_id')->constrained('modules')->cascadeOnDelete();
     $table->foreignUuid('formateur_id')->constrained('formateur_profiles')->cascadeOnDelete();
     $table->decimal('valeur', 5, 2)->nullable(); // Pour gérer les 16.50/20
-   $table->enum('type_evaluation', ['cc1', 'cc2', 'efm'])->default('cc1');
+    $table->enum('type_evaluation', ['cc1', 'cc2', 'efm'])->default('cc1');
     $table->string('session')->default('Normale');
     $table->timestamps();
 });

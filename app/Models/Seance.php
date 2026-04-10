@@ -57,7 +57,7 @@ class Seance extends Model
      */
     public function module()
     {
-        return $this->belongsTo(Module::class);
+        return $this->belongsTo(Module::class, 'module_id');
     }
 
     /**
@@ -65,7 +65,7 @@ class Seance extends Model
      */
     public function groupe()
     {
-        return $this->belongsTo(Groupe::class,'groupe_id');
+        return $this->belongsTo(Groupe::class, 'groupe_id');
     }
     // app/Models/Seance.php
 
