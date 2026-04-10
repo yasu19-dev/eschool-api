@@ -98,6 +98,7 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
     // ✅ Ajoute ces deux routes ici :
 Route::get('/groupes/{id}/seances', [DirectorController::class, 'getSeancesByGroupe']);
 Route::get('/formateurs/{id}/seances', [DirectorController::class, 'getSeancesByFormateur']);
+Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDelete']);
     // Ta route reset password peut rester dans UserController si tu veux
     Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
 });
