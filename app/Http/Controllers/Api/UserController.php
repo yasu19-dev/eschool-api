@@ -63,14 +63,5 @@ class UserController extends Controller
         ]);
     }
 
-    /**
-     * Suppression définitive (si tu ne veux pas utiliser le SoftDelete du DirectorController).
-     */
-    public function forceDelete($id)
-    {
-        $user = User::withTrashed()->findOrFail($id);
-        $user->forceDelete();
-
-        return response()->json(['message' => 'Utilisateur supprimé définitivement de la base de données']);
-    }
-}   
+   
+}

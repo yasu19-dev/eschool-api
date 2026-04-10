@@ -2,94 +2,54 @@
 
 namespace Database\Seeders;
 
-use App\Models\Filiere;
-use App\Models\Institution; // 👉 N'oublie pas d'importer le modèle de ton établissement !
 use Illuminate\Database\Seeder;
+use App\Models\Filiere;
+use App\Models\Institution;
+use Illuminate\Support\Str;
 
 class FiliereSeeder extends Seeder
 {
-    public function run(): void
+    public function run()
     {
-        // 1. On récupère l'institution (ou on la crée si la table est vide)
-        // Note : Si ta colonne s'appelle 'name' au lieu de 'nom', corrige-le ici
-        $institution = Institution::firstOrCreate([
-            'nom' => 'ISMONTIC'
-        ]);
+        $instId = Institution::first()->id ?? Str::uuid();
 
-        // 2. Tes données React
         $filieres = [
-            [
-                'title' => 'Développement Digital',
-                'code' => 'DD',
-                'duration' => '2 ans',
-                'niveau' => 'Technicien Spécialisé',
-                'description' => 'Formation complète aux métiers du développement web et mobile avec les technologies les plus récentes.',
-                'modules' => [
-                    'Programmation Web (HTML, CSS, JavaScript)',
-                    'Frameworks modernes (React, Angular, Vue.js)',
-                    'Développement Backend (PHP, Node.js, Java)',
-                    'Bases de données (SQL, NoSQL)',
-                    'Développement Mobile (Android, iOS)',
-                    'DevOps et déploiement',
-                ],
-                'debouches' => [
-                    'Développeur Web Full Stack',
-                    'Développeur Mobile',
-                    'Développeur Frontend/Backend',
-                    'Intégrateur Web',
-                ],
-                'color' => '#1E88E5',
-            ],
-            [
-                'title' => 'Infrastructure Digitale',
-                'code' => 'ID',
-                'duration' => '2 ans',
-                'niveau' => 'Technicien Spécialisé',
-                'description' => 'Spécialisation en administration système, réseaux informatiques et cybersécurité.',
-                'modules' => [
-                    'Administration Système (Linux, Windows Server)',
-                    'Réseaux informatiques (Cisco, routage, switching)',
-                    'Virtualisation et Cloud Computing',
-                    'Sécurité informatique et Cybersécurité',
-                    'Supervision et monitoring',
-                    'Scripts et automatisation',
-                ],
-                'debouches' => [
-                    'Administrateur Système et Réseaux',
-                    'Technicien Support IT',
-                    'Ingénieur Cybersécurité',
-                    'Administrateur Cloud',
-                ],
-                'color' => '#00C9A7',
-            ],
-            [
-                'title' => 'Infographie',
-                'code' => 'INFO',
-                'duration' => '2 ans',
-                'niveau' => 'Technicien Spécialisé',
-                'description' => "Formation spécialisée dans la communication visuelle, la création graphique et la maîtrise des outils de PAO pour l'impression et le digital.",
-                'modules' => [
-                    "Adobe Photoshop (Traitement d'image)",
-                    'Adobe Illustrator (Dessin vectoriel)',
-                    'Adobe InDesign (Mise en page)',
-                    'Théorie des couleurs et Typographie',
-                    'Conception UI/UX (Web & Mobile)',
-                    'Motion Design et Montage Vidéo',
-                ],
-                'debouches' => [
-                    'Infographiste 2D/3D',
-                    'Webdesigner / UI Designer',
-                    'Maquettiste PAO',
-                    'Directeur Artistique Junior',
-                ],
-                'color' => '#E91E63',
-            ],
+            // --- DÉVELOPPEMENT DIGITAL ---
+            ['title' => 'Développement Digital', 'specialite' => 'Tronc Commun', 'code' => 'DEV', 'color' => '#1E88E5', 'modules' => ['EGTS101', 'EGTS102', 'M102', 'M104']],
+            ['title' => 'Développement Digital', 'specialite' => 'Fullstack', 'code' => 'DEVFS', 'color' => '#1565C0', 'modules' => ['EGTS202', 'M204', 'M205']],
+            ['title' => 'Développement Digital', 'specialite' => 'Mobile', 'code' => 'DEVMO', 'color' => '#0D47A1', 'modules' => []],
+
+            // --- INFRASTRUCTURE DIGITALE ---
+            ['title' => 'Infrastructure Digitale', 'specialite' => 'Tronc Commun', 'code' => 'ID', 'color' => '#2E7D32', 'modules' => []],
+            ['title' => 'Infrastructure Digitale', 'specialite' => 'Cloud Computing', 'code' => 'IDCC', 'color' => '#1B5E20', 'modules' => []],
+            ['title' => 'Infrastructure Digitale', 'specialite' => 'Cyber sécurité', 'code' => 'IDCS', 'color' => '#004D40', 'modules' => []],
+            ['title' => 'Infrastructure Digitale', 'specialite' => 'Systèmes et Réseaux', 'code' => 'IDRS', 'color' => '#00695C', 'modules' => []],
+
+            // --- INFOGRAPHIE ---
+            ['title' => 'Infographie', 'specialite' => 'Tronc Commun', 'code' => 'INFO', 'color' => '#F4511E', 'modules' => []],
+            ['title' => 'Infographie', 'specialite' => 'Option Design', 'code' => 'INFO2', 'color' => '#BF360C', 'modules' => []],
+
+            // --- AI ---
+            ['title' => 'Artificial Intelligence', 'specialite' => 'Tronc Commun', 'code' => 'AI', 'color' => '#6A1B9A', 'modules' => []],
+            ['title' => 'Artificial Intelligence', 'specialite' => 'Data Analyst', 'code' => 'AIOA', 'color' => '#4A148C', 'modules' => []],
         ];
 
-        // 3. On attache l'ID de l'institution à chaque filière avant de l'enregistrer
-        foreach ($filieres as $filiere) {
-            $filiere['institution_id'] = $institution->id; // 👉 On lie la filière à l'école
-            Filiere::firstOrCreate(['code' => $filiere['code']], $filiere);
-        }
+      foreach ($filieres as $f) {
+    Filiere::updateOrCreate(
+        ['code' => $f['code']],
+        [
+            'institution_id' => $instId,
+            'title'          => $f['title'],
+            'specialite'     => $f['specialite'],
+            'niveau'         => 'Technicien Spécialisé',
+            'description'    => "Formation {$f['title']} - {$f['specialite']}",
+            // ✅ PAS DE json_encode ICI, juste le tableau brut
+            'modules'        => $f['modules'],
+            'debouches'      => [],
+            'color'          => $f['color'],
+            'duration'       => '2 ans'
+        ]
+    );
+}
     }
 }

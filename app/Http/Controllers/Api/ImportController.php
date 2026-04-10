@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Imports\StagiaireImport;
+use App\Services\GroupeModuleService;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TimetableImport;
 use App\Models\Seance;

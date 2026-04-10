@@ -33,7 +33,6 @@ class DirectorController extends Controller
                     ->orderBy('created_at', 'desc')
                     ->get();
     }
-
     // Récupérer les membres archivés (LA CORRECTION POUR TON ERREUR 500)
     public function trashed() {
         return User::onlyTrashed()
@@ -96,6 +95,28 @@ class DirectorController extends Controller
         $user->restore();
         return response()->json(['message' => 'Utilisateur restauré', 'user' => $user->load('stagiaireProfile', 'formateurProfile')]);
     }
+/**
+ * Suppression physique et définitive de l'utilisateur.
+ */
+public function forceDelete($id)
+{
+    try {
+        // On cherche l'utilisateur dans la corbeille (withTrashed)
+        $user = User::withTrashed()->findOrFail($id);
+
+        // Suppression définitive (SQL DELETE)
+        $user->forceDelete();
+
+        return response()->json([
+            'message' => 'L\'utilisateur a été supprimé définitivement de la base de données.'
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Erreur lors de la suppression définitive.',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 
     // --- PARTIE DONNÉES FORMULAIRES ---
     public function getGroupes() {
@@ -118,7 +139,7 @@ class DirectorController extends Controller
 
         ]);
     }
-    // ✅ À ajouter à la fin de DirectorController.php
+
 public function getSeancesByGroupe($id)
 {
     // On récupère les séances avec les infos du module et du formateur
