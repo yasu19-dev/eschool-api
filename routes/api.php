@@ -101,6 +101,8 @@ Route::get('/formateurs/{id}/seances', [DirectorController::class, 'getSeancesBy
 Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDelete']);
     // Ta route reset password peut rester dans UserController si tu veux
     Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+    // Route pour récupérer les statistiques globales d'absences pour l'administrateur
+Route::get('/stats/absences', [AbsenceController::class, 'getAdminStats']);
 });
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE

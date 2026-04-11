@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Absence;
 use Illuminate\Http\Request;
+// ? importation de stagiaireProfile
+use App\Models\StagiaireProfile;
+use Illuminate\Support\Facades\DB;
 
 class AbsenceController extends Controller
 {
@@ -14,6 +17,85 @@ class AbsenceController extends Controller
     // AbsenceController.php
 
 // app/Http/Controllers/Api/AbsenceController.php
+ /**
+     * ? NOUVELLE MÉTHODE : Statistiques pour le Tableau de Bord Admin
+     * ? Cette méthode calcule les taux, les heures perdues (2.5h) et prépare les données pour Recharts.
+     */
+
+
+public function getAdminStats(Request $request)
+{
+    try {
+        $filiere = $request->query('filiere', 'all');
+        $period = $request->query('period', 'month');
+
+        // Requête de base avec jointures
+        $query = Absence::join('seances', 'absences.seance_id', '=', 'seances.id')
+            ->join('stagiaire_profiles', 'absences.stagiaire_id', '=', 'stagiaire_profiles.id')
+            ->join('groupes', 'stagiaire_profiles.groupe_id', '=', 'groupes.id');
+
+        if ($filiere !== 'all') {
+            $query->where('groupes.code', 'like', $filiere . '%');
+        }
+
+        if ($period === 'month') {
+            $query->whereMonth('absences.date', now()->month);
+        }
+
+        // 1. CARDS (Calcul basé sur 2.5h)
+        $absentsCount = (clone $query)->where('absences.est_en_retard', false)->count();
+        $retardsCount = (clone $query)->where('absences.est_en_retard', true)->count();
+        $uniqueStagiaires = (clone $query)->where('absences.est_en_retard', false)->distinct('stagiaire_id')->count();
+
+        // 2. ÉVOLUTION (LineChart)
+        $evolution = Absence::selectRaw("DATE_FORMAT(date, '%b') as mois, count(*) as absences")
+            ->where('est_en_retard', false)
+            ->groupBy('mois')->orderBy('date')->get();
+
+        // 3. TYPES (PieChart)
+        $types = [
+            ['name' => 'Non justifiées', 'value' => (clone $query)->where('est_justifie', false)->count(), 'color' => '#EF5350'],
+            ['name' => 'Justifiées', 'value' => (clone $query)->where('est_justifie', true)->count(), 'color' => '#00C9A7'],
+        ];
+
+        // 4. TOP STAGIAIRES (Sécurisé)
+        $topStudents = StagiaireProfile::with('groupe')
+            ->withCount(['absences' => fn($q) => $q->where('est_en_retard', false)])
+            ->orderBy('absences_count', 'desc')->take(5)->get()
+            ->map(function($s) {
+                return [
+                    'name' => $s->nom . ' ' . $s->prenom,
+                    'groupe' => $s->groupe->code ?? 'N/A', // Sécurité si groupe absent
+                    'absences' => $s->absences_count,
+                    'justifiees' => $s->absences()->where('est_justifie', true)->count()
+                ];
+            });
+
+        return response()->json([
+            'globalStats' => [
+                ['title' => 'Taux d\'absence global', 'value' => $absentsCount > 0 ? 'Réel' : '0%', 'color' => '#EF5350'],
+                ['title' => 'Retards enregistrés', 'value' => $retardsCount, 'color' => '#1E88E5'],
+                ['title' => 'Absences ce mois', 'value' => $absentsCount, 'color' => '#FF9800'],
+                ['title' => 'Étudiants absents', 'value' => $uniqueStagiaires, 'color' => '#1E88E5'],
+                ['title' => 'Heures perdues', 'value' => ($absentsCount * 2.5) . 'h', 'color' => '#9C27B0'],
+            ],
+            'evolution' => $evolution,
+            'types' => $types,
+            'topStudents' => $topStudents
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
+
+
+
+
+
+
+
+//  ! la logique de yasmine
 
 public function storeBulk(Request $request)
 {
