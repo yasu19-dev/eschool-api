@@ -9,13 +9,20 @@ class FormateurProfile extends Model
 {
     use HasUuids;
     protected $fillable = [
-    'id',
     'user_id',
     'matricule',
     'nom',
     'prenom',
-    'specialite',
+    // --- VÉRIFIE QUE CES LIGNES SONT LÀ ---
+    'adresse',
     'email_professionnel',
+    'telephone',
+    'bio',
+    'photo_url',
+    // --------------------------------------
+    'specialite',
+    'grade',
+    'departement',
 ];
 
     public function user()
@@ -27,6 +34,12 @@ class FormateurProfile extends Model
     {
         return $this->hasMany(Seance::class, 'formateur_id');
     }
+    public function groupes()
+    {
+    // On utilise la table 'seances' comme une table pivot pour lier Formateur et Groupe
+    return $this->belongsToMany(Groupe::class, 'seances', 'formateur_id', 'groupe_id')
+                ->distinct(); // Pour ne pas avoir 10 fois le même groupe
+}
 
     public function annonces()
     {

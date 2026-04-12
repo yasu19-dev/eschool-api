@@ -80,6 +80,7 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
 
     // Route principale pour les données de statistiques
     Route::get('/statistics', [FormateurController::class, 'getStatistics']);
+    Route::get('/profile-stats', [FormateurController::class, 'getProfileStats']);
 
     });
 

@@ -1,49 +1,32 @@
 <?php
 
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
-use App\Http\Controllers\Controller;
+use App\Models\Seance;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class SeanceController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Récupère les séances du formateur avec les relations Groupe et Module.
      */
-    public function index()
+    public function index(Request $request)
     {
-        //
-    }
+        // On récupère le profil du formateur connecté
+        $formateur = $request->user()->formateurProfile;
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        //
-    }
+        if (!$formateur) {
+            return response()->json(['message' => 'Profil formateur non trouvé'], 404);
+        }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
-    {
-        //
-    }
+        // On récupère les séances en chargeant (Eager Loading) le groupe et le module
+        // C'est le "with" qui va supprimer le message "Code introuvable"
+        $seances = Seance::where('formateur_id', $formateur->id)
+            ->with(['groupe:id,code', 'module:id,intitule,code'])
+            ->orderBy('date', 'desc')
+            ->get();
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
-    {
-        //
+        return response()->json($seances);
     }
 }

@@ -63,6 +63,7 @@ public function showProfile(Request $request)
 
 public function updateProfile(Request $request)
 {
+    Log::info($request->all());
     // 1. Validation des champs éditables
     $validated = $request->validate([
         'adresse'             => 'nullable|string|max:255',
@@ -95,8 +96,23 @@ public function updateProfile(Request $request)
         //
     }
     public function getSeances(Request $request) {
-        return response()->json($request->user()->formateurProfile->seances()->with(['module', 'groupe'])->get());
-    }
+    $seances = $request->user()->formateurProfile->seances()
+        ->with(['module', 'groupe'])
+        ->get();
+
+    // On transforme pour voir si le groupe existe bien
+    return response()->json($seances->map(function($s) {
+        return [
+            'id' => $s->id,
+            'groupe_id' => $s->groupe_id,
+            'groupe_code' => $s->groupe ? $s->groupe->code : "ERREUR: Relation vide",
+            'module_intitule' => $s->module ? $s->module->intitule : "Module inconnu",
+            // On renvoie tout l'objet pour le Select
+            'groupe' => $s->groupe,
+            'module' => $s->module
+        ];
+    }));
+}
 
     // app/Http/Controllers/Api/FormateurController.php
 
@@ -189,7 +205,7 @@ public function getGroupes(Request $request)
         ->select('groupes.id', 'groupes.code')
         ->distinct()
         ->get();
-
+// $groupes = Groupe::select('id', 'code')->get();
     return response()->json($groupes);
 }
 public function getModules(Request $request) {
@@ -239,21 +255,30 @@ public function getStatistics(Request $request)
     $moduleId = $request->query('module_id');
     $periode = $request->query('periode', 'month');
 
-    // 1. Gestion des dates
-    $startDate = null; $endDate = null;
+    // 1. Gestion robuste de la période scolaire (Septembre à Août)
+    $startDate = null;
+    $endDate = now(); // Par défaut jusqu'à aujourd'hui
+
     if ($periode === 'month') {
         $startDate = now()->startOfMonth();
         $endDate = now()->endOfMonth();
     } elseif ($periode === 'year') {
-        $startDate = now()->month >= 9 ? now()->month(9)->startOfMonth() : now()->subYear()->month(9)->startOfMonth();
+        // Si on est entre Janvier et Août, l'année a commencé en Septembre dernier
+        // Si on est entre Septembre et Décembre, l'année commence maintenant
+        $startDate = (now()->month >= 9)
+            ? now()->month(9)->startOfMonth()
+            : now()->subYear()->month(9)->startOfMonth();
+
         $endDate = $startDate->copy()->addYear()->subDay();
     }
 
     // 2. Filtrage des Séances
     $seanceQuery = Seance::where('formateur_id', $formateurId);
-    if ($startDate && $endDate) {
+
+    if ($startDate && $periode !== 'all') {
         $seanceQuery->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
     }
+
     if ($groupeId && $groupeId !== 'all') $seanceQuery->where('groupe_id', $groupeId);
     if ($moduleId && $moduleId !== 'all') $seanceQuery->where('module_id', $moduleId);
 
@@ -261,29 +286,36 @@ public function getStatistics(Request $request)
     $groupeIds = $seanceQuery->pluck('groupe_id')->unique();
     $moduleIds = $seanceQuery->pluck('module_id')->unique();
 
-    // 3. Calcul des Notes Globales
-    $notesQuery = Note::whereIn('module_id', $moduleIds)
-        ->whereIn('stagiaire_id', function($q) use ($groupeIds) {
-            $q->select('id')->from('stagiaire_profiles')->whereIn('groupe_id', $groupeIds);
-        });
-    if ($startDate) $notesQuery->whereBetween('created_at', [$startDate, $endDate]);
-
-    $notes = $notesQuery->get();
-
-    // 4. Calcul des Statistiques par Stagiaire (Formule OFPPT)
+    // 3. Calcul des Statistiques par Stagiaire
+    // On s'assure que cette méthode renvoie aussi le nombre d'absences par stagiaire
     $allStudents = $this->getAllStudentsStats($groupeIds, $moduleIds, $startDate, $endDate);
 
-    // 5. Taux de présence
+    // 4. Calcul du Taux de présence
     $totalAppels = Absence::whereIn('seance_id', $seanceIds)->count();
     $totalAbsences = Absence::whereIn('seance_id', $seanceIds)->where('est_en_retard', 0)->count();
     $tauxPresence = $totalAppels > 0 ? round(100 - (($totalAbsences / $totalAppels) * 100), 1) : 100;
+
+    // 5. Filtrage des Tops et des Difficultés
+    // Uniquement ceux qui ont la moyenne pour les Tops
+    $topStudents = $allStudents->where('moyenne', '>=', 10)
+        ->sortByDesc('moyenne')
+        ->take(5)
+        ->values();
+
+    // Ceux qui ont moins de 10 OU beaucoup d'absences
+    $strugglingStudents = $allStudents->where('moyenne', '<', 10)
+        ->sortBy('moyenne')
+        ->take(5)
+        ->values();
 
     return response()->json([
         'globalStats' => [
             'totalEtudiants' => StagiaireProfile::whereIn('groupe_id', $groupeIds)->count(),
             'moyenneGénérale' => round($allStudents->avg('moyenne'), 2) ?: 0,
             'tauxPresence' => $tauxPresence,
-            'tauxReussite' => $allStudents->count() > 0 ? round(($allStudents->where('moyenne', '>=', 10)->count() / $allStudents->count()) * 100, 1) : 0
+            'tauxReussite' => $allStudents->count() > 0
+                ? round(($allStudents->where('moyenne', '>=', 10)->count() / $allStudents->count()) * 100, 1)
+                : 0
         ],
         'allStudentsStats' => $allStudents,
         'moyennesData' => $this->getMoyennesEvolution($moduleIds, $groupeIds),
@@ -299,8 +331,8 @@ public function getStatistics(Request $request)
             ['name' => 'Passable', 'value' => $allStudents->whereBetween('moyenne', [10, 12])->count(), 'color' => '#FF9800'],
             ['name' => 'Insuffisant', 'value' => $allStudents->where('moyenne', '<', 10)->count(), 'color' => '#EF5350'],
         ],
-        'topStudents' => $allStudents->sortByDesc('moyenne')->take(5)->values(),
-        'strugglingStudents' => $allStudents->where('moyenne', '<', 10)->sortBy('moyenne')->take(5)->values(),
+        'topStudents' => $topStudents,
+        'strugglingStudents' => $strugglingStudents,
         'difficultModules' => [],
         'successModules' => [],
         'absencesTendances' => []
@@ -310,16 +342,15 @@ public function getStatistics(Request $request)
 
 private function getMoyennesEvolution($moduleIds, $groupeIds)
 {
-    // On vérifie que les variables sont bien passées en argument au début (ligne 1)
     return Note::whereIn('module_id', $moduleIds)
         ->whereIn('stagiaire_id', function($q) use ($groupeIds) {
-            // Le "use ($groupeIds)" permet d'utiliser la variable à l'intérieur
             $q->select('id')->from('stagiaire_profiles')->whereIn('groupe_id', $groupeIds);
         })
         ->select(
             DB::raw('MONTH(created_at) as mois_num'),
             DB::raw('DATE_FORMAT(created_at, "%b") as mois'),
-            DB::raw('AVG(valeur) as moyenne')
+            // 🛡️ CORRECTION : On ramène l'EFM sur 20 avant de faire la moyenne
+            DB::raw('AVG(CASE WHEN type_evaluation = "efm" THEN valeur / 2 ELSE valeur END) as moyenne')
         )
         ->groupBy('mois_num', 'mois')
         ->orderBy('mois_num')
@@ -367,5 +398,31 @@ private function getAllStudentsStats($groupeIds, $moduleIds, $startDate, $endDat
                 'moyenne' => round($moyenneFinale, 2)
             ];
         })->values();
+}
+// Dans app/Http/Controllers/FormateurController.php
+
+public function getProfileStats(Request $request)
+{
+    $formateur = $request->user()->formateurProfile;
+
+    if (!$formateur) {
+        return response()->json(['message' => 'Profil non trouvé'], 404);
+    }
+
+    // 1. Récupérer les IDs uniques des groupes enseignés
+    $groupeIds = $formateur->seances()->pluck('groupe_id')->unique();
+
+    // 2. Compter le nombre réel de stagiaires dans ces groupes
+    // On utilise le modèle StagiaireProfile
+    $totalStagiairesReels = StagiaireProfile::whereIn('groupe_id', $groupeIds)->count();
+
+    // 3. On peut aussi compter le nombre de modules différents qu'il enseigne
+    $totalModules = $formateur->seances()->pluck('module_id')->unique()->count();
+
+    return response()->json([
+        'totalStagiaires' => $totalStagiairesReels,
+        'totalGroupes' => $groupeIds->count(),
+        'totalModules' => $totalModules
+    ]);
 }
 }
