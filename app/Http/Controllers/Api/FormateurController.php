@@ -5,12 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Absence;
 use App\Models\Groupe;
+use App\Models\Module;
 use App\Models\Note;
 use App\Models\Seance;
 use App\Models\StagiaireProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class FormateurController extends Controller
 {
@@ -131,11 +134,19 @@ public function getHistory(Request $request) {
     $profile = $user->formateurProfile;
 
     if ($request->hasFile('photo')) {
-        // 1. Supprimer l'ancienne photo si elle existe pour ne pas encombrer le serveur
-        if ($profile->photo_url) {
-            $oldPath = str_replace(asset('storage/'), '', $profile->photo_url);
-            Storage::disk('public')->delete($oldPath);
-        }
+        $filename = basename($profile->photo_url);
+
+    // 2. On détermine le sous-dossier (stagiaires ou formateurs)
+    // On vérifie si l'objet $profile est une instance de StagiaireProfile
+    $subfolder = ($profile instanceof StagiaireProfile) ? 'stagiaires' : 'formateurs';
+
+    // 3. On construit le chemin complet dans le disque public
+    $pathToDelete = "profiles/{$subfolder}/{$filename}";
+
+    // 4. Suppression si le fichier existe
+    if (Storage::disk('public')->exists($pathToDelete)) {
+        Storage::disk('public')->delete($pathToDelete);
+    }
 
         // 2. Stocker la nouvelle photo
         $path = $request->file('photo')->store('profiles', 'public');
@@ -170,19 +181,14 @@ public function updateSettings(Request $request)
 
 public function getGroupes(Request $request)
 {
-    $formateurId = $request->user()->formateurProfile->id;
+    $formateur = $request->user()->formateurProfile;
 
-    // // On récupère les groupes qui ont au moins une séance avec ce formateur
-    // $groupes = Groupe::whereHas('seances', function($query) use ($formateurId) {
-    //     $query->where('formateur_id', $formateurId);
-    // })->get();
-    $groupes = Seance::where('formateur_id', $formateurId)
-            ->with('groupe')
-            ->get()
-            ->pluck('groupe')
-            ->unique('id')
-            ->values();
-    // $groupes = Groupe::all();
+    // On récupère les groupes directement liés à ce formateur
+    // (Aya a dû créer une relation dans ton modèle FormateurProfile)
+    $groupes = $formateur->groupes()
+        ->select('groupes.id', 'groupes.code')
+        ->distinct()
+        ->get();
 
     return response()->json($groupes);
 }
@@ -195,88 +201,171 @@ public function getModules(Request $request) {
         ->unique('id')
         ->values();
 
+    return response()->json($modules);
+}
+public function getFormateurModules(Request $request)
+{
+    $user = $request->user();
+
+    // On vérifie si le profil formateur existe
+    if (!$user->formateurProfile) {
+        return response()->json(['error' => 'Profil formateur non trouvé'], 404);
+    }
+
+    $formateurId = $user->formateurProfile->id;
+
+    // MÉTHODE ULTIME : On récupère les modules liés aux séances
+    $modules = DB::table('seances')
+        ->join('modules', 'seances.module_id', '=', 'modules.id')
+        ->where('seances.formateur_id', $formateurId)
+        ->select('modules.id', 'modules.intitule as label', 'modules.code')
+        ->distinct()
+        ->get();
+
+    // Log pour le debug Laravel (vérifie ton fichier storage/logs/laravel.log)
+    Log::info("Modules pour formateur $formateurId : " . $modules->count());
 
     return response()->json($modules);
 }
 
+
 public function getStatistics(Request $request)
-    {
-        $formateurId = $request->user()->formateurProfile->id;
-        $groupeId = $request->query('groupe_id');
-        $moduleId = $request->query('module_id');
-        $periode = $request->query('periode', 'semester');
+{
+    $formateurProfile = $request->user()->formateurProfile;
+    if (!$formateurProfile) return response()->json(['error' => 'Profil non trouvé'], 404);
 
-        // --- A. Filtrage de base des séances ---
-        $seanceQuery = Seance::where('formateur_id', $formateurId);
-        if ($groupeId) $seanceQuery->where('groupe_id', $groupeId);
-        if ($moduleId) $seanceQuery->where('module_id', $moduleId);
+    $formateurId = $formateurProfile->id;
+    $groupeId = $request->query('groupe_id');
+    $moduleId = $request->query('module_id');
+    $periode = $request->query('periode', 'month');
 
-        $seanceIds = $seanceQuery->pluck('id');
-        $groupeIds = $seanceQuery->pluck('groupe_id')->unique();
-
-        // --- B. Global Stats ---
-        $totalEtudiants = StagiaireProfile::whereIn('groupe_id', $groupeIds)->count();
-        $moyenneG = Note::whereIn('module_id', $seanceQuery->pluck('module_id'))->avg('valeur') ?: 0;
-
-        // Taux de présence (Logique simplifiée)
-        $totalAppels = DB::table('absence_stagiaire') // Ta table pivot d'absences
-            ->whereIn('seance_id', $seanceIds)->count();
-        $totalAbsences = DB::table('absence_stagiaire')
-            ->whereIn('seance_id', $seanceIds)->where('est_en_retard', false)->count();
-
-        $tauxPresence = $totalAppels > 0 ? round(100 - (($totalAbsences / $totalAppels) * 100), 1) : 100;
-
-        // --- C. Moyennes Data (Évolution par mois) ---
-        $moyennesData = Note::whereIn('module_id', $seanceQuery->pluck('module_id'))
-            ->select(DB::raw('MONTHNAME(created_at) as mois'), DB::raw('AVG(valeur) as moyenne'))
-            ->groupBy('mois')
-            ->orderBy('created_at')
-            ->get();
-
-        // --- D. Top Students ---
-        $topStudents = StagiaireProfile::whereIn('groupe_id', $groupeIds)
-            ->with(['user', 'groupe'])
-            ->get()
-            ->map(function($s) {
-                return [
-                    'name' => $s->nom . ' ' . $s->prenom,
-                    'groupe' => $s->groupe->code,
-                    'moyenne' => round(Note::where('stagiaire_id', $s->id)->avg('valeur'), 2) ?: 0
-                ];
-            })->sortByDesc('moyenne')->take(5)->values();
-
-        // --- E. Mentions Data ---
-        $notes = Note::whereIn('module_id', $seanceQuery->pluck('module_id'))->pluck('valeur');
-        $mentions = [
-            ['name' => 'Excellent', 'value' => $notes->where('>=', 16)->count(), 'color' => '#00C9A7'],
-            ['name' => 'Très bien', 'value' => $notes->whereBetween('valeur', [14, 15.99])->count(), 'color' => '#1E88E5'],
-            ['name' => 'Bien', 'value' => $notes->whereBetween('valeur', [12, 13.99])->count(), 'color' => '#FF9800'],
-            ['name' => 'Passable', 'value' => $notes->whereBetween('valeur', [10, 11.99])->count(), 'color' => '#9C27B0'],
-            ['name' => 'Insuffisant', 'value' => $notes->where('<', 10)->count(), 'color' => '#EF5350'],
-        ];
-
-        return response()->json([
-            'globalStats' => [
-                'totalEtudiants' => $totalEtudiants,
-                'moyenneGénérale' => round($moyenneG, 2),
-                'tauxPresence' => $tauxPresence,
-                'tauxReussite' => 85 // Exemple statique ou calculé sur notes > 10
-            ],
-            'moyennesData' => $moyennesData,
-            'presenceData' => [
-                ['module' => 'Global', 'present' => $tauxPresence, 'absent' => 100 - $tauxPresence]
-            ],
-            'notesDistribution' => [
-                ['range' => '0-10', 'count' => $notes->where('<', 10)->count()],
-                ['range' => '10-14', 'count' => $notes->whereBetween('valeur', [10, 14])->count()],
-                ['range' => '14-20', 'count' => $notes->where('>=', 14)->count()],
-            ],
-            'mentionsData' => $mentions,
-            'topStudents' => $topStudents,
-            'strugglingStudents' => [], // À calculer selon le même principe (moyenne < 10)
-            'difficultModules' => [],
-            'successModules' => [],
-            'absencesTendances' => []
-        ]);
+    // 1. Gestion des dates
+    $startDate = null; $endDate = null;
+    if ($periode === 'month') {
+        $startDate = now()->startOfMonth();
+        $endDate = now()->endOfMonth();
+    } elseif ($periode === 'year') {
+        $startDate = now()->month >= 9 ? now()->month(9)->startOfMonth() : now()->subYear()->month(9)->startOfMonth();
+        $endDate = $startDate->copy()->addYear()->subDay();
     }
+
+    // 2. Filtrage des Séances
+    $seanceQuery = Seance::where('formateur_id', $formateurId);
+    if ($startDate && $endDate) {
+        $seanceQuery->whereBetween('date', [$startDate->format('Y-m-d'), $endDate->format('Y-m-d')]);
+    }
+    if ($groupeId && $groupeId !== 'all') $seanceQuery->where('groupe_id', $groupeId);
+    if ($moduleId && $moduleId !== 'all') $seanceQuery->where('module_id', $moduleId);
+
+    $seanceIds = $seanceQuery->pluck('id');
+    $groupeIds = $seanceQuery->pluck('groupe_id')->unique();
+    $moduleIds = $seanceQuery->pluck('module_id')->unique();
+
+    // 3. Calcul des Notes Globales
+    $notesQuery = Note::whereIn('module_id', $moduleIds)
+        ->whereIn('stagiaire_id', function($q) use ($groupeIds) {
+            $q->select('id')->from('stagiaire_profiles')->whereIn('groupe_id', $groupeIds);
+        });
+    if ($startDate) $notesQuery->whereBetween('created_at', [$startDate, $endDate]);
+
+    $notes = $notesQuery->get();
+
+    // 4. Calcul des Statistiques par Stagiaire (Formule OFPPT)
+    $allStudents = $this->getAllStudentsStats($groupeIds, $moduleIds, $startDate, $endDate);
+
+    // 5. Taux de présence
+    $totalAppels = Absence::whereIn('seance_id', $seanceIds)->count();
+    $totalAbsences = Absence::whereIn('seance_id', $seanceIds)->where('est_en_retard', 0)->count();
+    $tauxPresence = $totalAppels > 0 ? round(100 - (($totalAbsences / $totalAppels) * 100), 1) : 100;
+
+    return response()->json([
+        'globalStats' => [
+            'totalEtudiants' => StagiaireProfile::whereIn('groupe_id', $groupeIds)->count(),
+            'moyenneGénérale' => round($allStudents->avg('moyenne'), 2) ?: 0,
+            'tauxPresence' => $tauxPresence,
+            'tauxReussite' => $allStudents->count() > 0 ? round(($allStudents->where('moyenne', '>=', 10)->count() / $allStudents->count()) * 100, 1) : 0
+        ],
+        'allStudentsStats' => $allStudents,
+        'moyennesData' => $this->getMoyennesEvolution($moduleIds, $groupeIds),
+        'presenceData' => [['module' => 'Global', 'present' => $tauxPresence, 'absent' => round(100 - $tauxPresence, 1)]],
+        'notesDistribution' => [
+            ['range' => '0-10', 'count' => $allStudents->where('moyenne', '<', 10)->count()],
+            ['range' => '10-14', 'count' => $allStudents->whereBetween('moyenne', [10, 14])->count()],
+            ['range' => '14-20', 'count' => $allStudents->where('moyenne', '>=', 14)->count()],
+        ],
+        'mentionsData' => [
+            ['name' => 'Excellent', 'value' => $allStudents->where('moyenne', '>=', 16)->count(), 'color' => '#00C9A7'],
+            ['name' => 'Bien', 'value' => $allStudents->whereBetween('moyenne', [12, 16])->count(), 'color' => '#1E88E5'],
+            ['name' => 'Passable', 'value' => $allStudents->whereBetween('moyenne', [10, 12])->count(), 'color' => '#FF9800'],
+            ['name' => 'Insuffisant', 'value' => $allStudents->where('moyenne', '<', 10)->count(), 'color' => '#EF5350'],
+        ],
+        'topStudents' => $allStudents->sortByDesc('moyenne')->take(5)->values(),
+        'strugglingStudents' => $allStudents->where('moyenne', '<', 10)->sortBy('moyenne')->take(5)->values(),
+        'difficultModules' => [],
+        'successModules' => [],
+        'absencesTendances' => []
+    ]);
+}
+
+
+private function getMoyennesEvolution($moduleIds, $groupeIds)
+{
+    // On vérifie que les variables sont bien passées en argument au début (ligne 1)
+    return Note::whereIn('module_id', $moduleIds)
+        ->whereIn('stagiaire_id', function($q) use ($groupeIds) {
+            // Le "use ($groupeIds)" permet d'utiliser la variable à l'intérieur
+            $q->select('id')->from('stagiaire_profiles')->whereIn('groupe_id', $groupeIds);
+        })
+        ->select(
+            DB::raw('MONTH(created_at) as mois_num'),
+            DB::raw('DATE_FORMAT(created_at, "%b") as mois'),
+            DB::raw('AVG(valeur) as moyenne')
+        )
+        ->groupBy('mois_num', 'mois')
+        ->orderBy('mois_num')
+        ->get()
+        ->map(function($item) {
+            return [
+                'mois' => $item->mois,
+                'moyenne' => round($item->moyenne, 2)
+            ];
+        });
+}
+
+private function getAllStudentsStats($groupeIds, $moduleIds, $startDate, $endDate)
+{
+    return StagiaireProfile::whereIn('groupe_id', $groupeIds)
+        ->get()
+        ->map(function($s) use ($moduleIds, $startDate, $endDate) {
+            // On récupère les notes CC et EFM
+            $notes = Note::where('stagiaire_id', $s->id)
+                ->whereIn('module_id', $moduleIds);
+
+            if ($startDate && $endDate) {
+                $notes->whereBetween('created_at', [$startDate, $endDate]);
+            }
+
+            $allNotes = $notes->get();
+
+            // Calcul de la moyenne des CC (CC1, CC2, CC3)
+            $ccNotes = $allNotes->whereIn('type_evaluation', ['cc1', 'cc2', 'cc3'])->pluck('valeur');
+            $avgCC = $ccNotes->count() > 0 ? $ccNotes->avg() : null;
+
+            // Note EFM (sur 40)
+            $efmNote = $allNotes->where('type_evaluation', 'efm')->first()?->valeur;
+
+            // Application de ta formule : ((CC1+CC2+CC3)/3 + EFM) / 3
+            $moyenneFinale = 0;
+            if ($avgCC !== null && $efmNote !== null) {
+                $moyenneFinale = ($avgCC + $efmNote) / 3;
+            } elseif ($avgCC !== null) {
+                $moyenneFinale = $avgCC; // Si pas d'EFM, on garde la moyenne CC
+            }
+
+            return [
+                'name' => $s->nom . ' ' . $s->prenom,
+                'moyenne' => round($moyenneFinale, 2)
+            ];
+        })->values();
+}
 }

@@ -5,27 +5,34 @@ namespace App\Imports;
 use App\Models\User;
 use App\Models\StagiaireProfile;
 use App\Models\Groupe;
+use App\Services\GroupeModuleService; // ✅ Ajout du service
 use Illuminate\Support\Facades\Hash;
 use Maatwebsite\Excel\Concerns\ToCollection;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class StagiaireImport implements ToCollection, WithHeadingRow
 {
     public function collection(Collection $rows)
     {
-        DB::transaction(function () use ($rows) {
+        $syncService = new GroupeModuleService(); // ✅ Initialisation
+
+        DB::transaction(function () use ($rows, $syncService) {
             foreach ($rows as $row) {
-                // 1. On cherche l'ID du groupe par son code (ex: 'DEV-101')
-                // Dans StagiaireImport.php
-            $groupe = Groupe::where('code', trim(strtoupper($row['groupe'])))->first();
+                // 1. Recherche ou création du groupe
+                $groupeCode = trim(strtoupper($row['groupe']));
+                $groupe = Groupe::where('code', $groupeCode)->first();
+
+                // ✅ LOGIQUE DE SYNCHRONISATION : On lie les modules au groupe
+                if ($groupe) {
+                    $syncService->syncModules($groupe);
+                }
 
                 // 2. Création de l'utilisateur
                 $user = User::create([
                     'email'    => $row['email'],
-                    'password' => Hash::make($row['password'] ?? 'Ismontic2026'), // Mot de passe par défaut
+                    'password' => Hash::make($row['password'] ?? 'Ismontic2026'),
                     'role'     => 'stagiaire',
                     'etat'     => 'Actif',
                 ]);

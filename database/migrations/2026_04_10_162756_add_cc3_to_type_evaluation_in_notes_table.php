@@ -10,19 +10,19 @@ return new class extends Migration
      * Run the migrations.
      */
     public function up(): void
-    {
-        Schema::table('users', function (Blueprint $table) {
-        $table->softDeletes(); // Cela crée la colonne 'deleted_at' (timestamp)
+{
+    Schema::table('notes', function (Blueprint $table) {
+        $table->enum('type_evaluation', ['cc1', 'cc2', 'cc3', 'efm'])->default('cc1')->change();
     });
-    }
+}
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropSoftDeletes(); // Cela supprime la colonne 'deleted_at'
+        Schema::table('notes', function (Blueprint $table) {
+            //
         });
     }
 };

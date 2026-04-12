@@ -57,16 +57,15 @@ class Seance extends Model
      */
     public function module()
     {
-        return $this->belongsTo(Module::class);
+        return $this->belongsTo(Module::class, 'module_id');
     }
 
-    /**
-     * Relation vers le groupe (classe)
-     */
-    public function groupe()
-    {
-        return $this->belongsTo(Groupe::class,'groupe_id');
-    }
+    // Dans app/Models/Seance.php
+public function groupe()
+{
+    // On précise bien 'groupe_id' car c'est le nom dans ta table seances
+    return $this->belongsTo(Groupe::class, 'groupe_id');
+}
     // app/Models/Seance.php
 
     /**

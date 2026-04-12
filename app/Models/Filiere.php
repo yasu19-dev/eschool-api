@@ -10,8 +10,11 @@ class Filiere extends Model
 {
     use HasFactory, HasUuids;
 
-    // Autorise le remplissage de toutes les colonnes
-    protected $guarded = [];
+    protected $fillable = [
+        'institution_id', 'title', 'specialite', 'code',
+        'duration', 'niveau', 'description', 'modules',
+        'debouches', 'color'
+    ];
 
     // Très important pour React : convertit automatiquement le JSON de la base de données en tableau
     protected $casts = [

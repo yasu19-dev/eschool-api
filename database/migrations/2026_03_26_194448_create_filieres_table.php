@@ -18,7 +18,7 @@ return new class extends Migration
         $table->string('code', 20)->unique();
         $table->string('duration')->default('2 ans');
         $table->string('niveau'); // Ex: 'Technicien Spécialisé'
-        $table->text('description');
+        $table->text('description')->default('Description de la filière');
         $table->json('modules'); // On stocke la liste en JSON pour React
         $table->json('debouches'); // On stocke la liste en JSON pour React
         $table->string('color')->default('#1E88E5');
