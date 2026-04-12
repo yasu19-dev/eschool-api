@@ -108,6 +108,7 @@ public function updateProfile(Request $request)
             'creneau' => $s->creneau,
             'salle' => $s->salle,
             'groupe_id' => $s->groupe_id,
+            'module_id' => $s->module_id,
             'groupe_code' => $s->groupe ? $s->groupe->code : "ERREUR: Relation vide",
             'module_intitule' => $s->module ? $s->module->intitule : "Module inconnu",
             // On renvoie tout l'objet pour le Select
