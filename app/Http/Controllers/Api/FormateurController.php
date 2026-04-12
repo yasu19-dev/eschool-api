@@ -181,19 +181,14 @@ public function updateSettings(Request $request)
 
 public function getGroupes(Request $request)
 {
-    $formateurId = $request->user()->formateurProfile->id;
+    $formateur = $request->user()->formateurProfile;
 
-    // // On récupère les groupes qui ont au moins une séance avec ce formateur
-    // $groupes = Groupe::whereHas('seances', function($query) use ($formateurId) {
-    //     $query->where('formateur_id', $formateurId);
-    // })->get();
-    $groupes = Seance::where('formateur_id', $formateurId)
-            ->with('groupe')
-            ->get()
-            ->pluck('groupe')
-            ->unique('id')
-            ->values();
-    // $groupes = Groupe::all();
+    // On récupère les groupes directement liés à ce formateur
+    // (Aya a dû créer une relation dans ton modèle FormateurProfile)
+    $groupes = $formateur->groupes()
+        ->select('groupes.id', 'groupes.code')
+        ->distinct()
+        ->get();
 
     return response()->json($groupes);
 }
@@ -312,14 +307,6 @@ public function getStatistics(Request $request)
     ]);
 }
 
-/**
- * Calcule les moyennes individuelles de TOUS les stagiaires (Formule OFPPT)
- */
-
-
-/**
- * Génère les données pour le graphique de progression (LineChart)
- */
 
 private function getMoyennesEvolution($moduleIds, $groupeIds)
 {

@@ -8,63 +8,68 @@ use App\Models\Module;
 use App\Models\FormateurProfile;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithCustomCsvSettings; // ✅ Requis pour les CSV
 use Carbon\Carbon;
 use Exception;
-// ✅ Outil pour convertir les dates numériques spécifiques à Excel
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
-class TimetableImport implements ToModel, WithHeadingRow
+class TimetableImport implements ToModel, WithHeadingRow, WithCustomCsvSettings
 {
-    /**
-     * @param array $row
-     * @return \Illuminate\Database\Eloquent\Model|null
-     * @throws Exception
-     */
+    // ✅ Force la lecture du CSV avec des virgules pour éviter les erreurs de lecture
+    public function getCsvSettings(): array
+    {
+        return ['delimiter' => ','];
+    }
+
     public function model(array $row)
     {
-        // 1. Recherche du Groupe (par son code, ex: DEVOWFS201)
+        // 1. Recherche du Groupe (Clé 'groupe' du CSV)
         $groupe = Groupe::where('code', $row['groupe'])->first();
         if (!$groupe) {
-            throw new Exception("Erreur : Le groupe '{$row['groupe']}' n'existe pas dans la table groupes.");
+            throw new Exception("Erreur : Le groupe '{$row['groupe']}' est introuvable.");
         }
 
-        // 2. Recherche du Module (par son code, ex: M204)
-        $module = Module::where('code', $row['code_module'])->first();
+        // 2. Recherche du Module (Clé 'module' du CSV) ✅ Corrigé
+        $module = Module::where('code', $row['module'])->first();
         if (!$module) {
-            throw new Exception("Erreur : Le module avec le code '{$row['code_module']}' est introuvable.");
+            throw new Exception("Erreur : Le module '{$row['module']}' est introuvable.");
         }
 
-        // 3. Recherche du Formateur (par son matricule, ex: F2015042)
-        $formateur = FormateurProfile::where('matricule', $row['matricule_formateur'])->first();
+        // 3. Recherche du Formateur par NOM ✅ Corrigé (puisque le CSV contient le nom)
+        $nomFamille = str_replace(['Mme. ', 'M. '], '', $row['formateur']);
+        $formateur = FormateurProfile::where('nom', 'like', '%' . trim($nomFamille) . '%')->first();
+
         if (!$formateur) {
-            throw new Exception("Erreur : Le formateur avec le matricule '{$row['matricule_formateur']}' n'existe pas.");
+            throw new Exception("Erreur : Le formateur '{$row['formateur']}' est introuvable dans la base.");
         }
 
-        // 4. LOGIQUE DE CORRECTION DE LA DATE ✅
-        // Empêche l'enregistrement de dates erronées (1970/1997) dues au format Excel
+        // 4. Logique de Date flexible ✅
         try {
             if (is_numeric($row['date'])) {
-                // Conversion du format numérique Excel en objet Date PHP puis format MySQL
                 $dateFormatted = ExcelDate::excelToDateTimeObject($row['date'])->format('Y-m-d');
             } else {
-                // Si la date est au format texte "JJ/MM/AAAA"
-                $dateFormatted = Carbon::createFromFormat('d/m/Y', $row['date'])->format('Y-m-d');
+                // Carbon essaie de deviner le format si ce n'est pas du d/m/Y
+                $dateFormatted = Carbon::parse($row['date'])->format('Y-m-d');
             }
         } catch (Exception $e) {
-            // En cas de format de texte différent (ex: AAAA-MM-JJ)
-            $dateFormatted = Carbon::parse($row['date'])->format('Y-m-d');
+            throw new Exception("Erreur format date sur la ligne : " . $row['date']);
         }
 
-        // 5. Création de la séance en base de données
-        return new Seance([
-            'groupe_id'        => $groupe->id,
-            'module_id'        => $module->id,
-            'formateur_id'     => $formateur->id,
-            'date'             => $dateFormatted,
-           'creneau'          => $row['horaire'],
-           'type'             => 'Cours',
-            'salle'            => $row['salle'],   // ex: SDD1 ou A DISTANCE
-            'commentaire_prof' => $row['notes'] ?? null,
-        ]);
+        // 5. Création (ou mise à jour pour éviter les doublons)
+        return Seance::updateOrCreate(
+            [
+                'groupe_id' => $groupe->id,
+                'date'      => $dateFormatted,
+                'creneau'   => $row['creneau'], // ✅ Corrigé (clé CSV 'creneau')
+            ],
+            [
+                'id'           => (string) \Illuminate\Support\Str::uuid(),
+                'module_id'    => $module->id,
+                'formateur_id' => $formateur->id,
+                'type'         => 'Cours',
+                'salle'        => $row['salle'],
+                'commentaire_prof' => $row['notes'] ?? null,
+            ]
+        );
     }
 }

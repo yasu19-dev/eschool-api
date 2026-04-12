@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Imports\StagiaireImport;
-use App\Services\GroupeModuleService;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\TimetableImport;
 use App\Models\Seance;
@@ -13,9 +12,6 @@ use Exception;
 
 class ImportController extends Controller
 {
-    /**
-     * Importation massive des stagiaires.
-     */
     public function importStagiaires(Request $request)
     {
         // Validation stricte du fichier
@@ -54,7 +50,7 @@ class ImportController extends Controller
             'message' => 'L\'emploi du temps global a été mis à jour avec succès.'
         ], 200);
 
-    } catch (\Exception $e) {
+    } catch (Exception $e) {
         return response()->json([
             'message' => 'Erreur lors de l\'importation : ' . $e->getMessage()
         ], 500);
