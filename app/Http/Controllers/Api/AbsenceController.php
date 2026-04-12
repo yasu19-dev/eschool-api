@@ -100,4 +100,27 @@ public function getAbsencesBySession(Request $request)
 
     return response()->json($absences);
 }
+
+public function recent(Request $request)
+{
+    $formateur = $request->user()->formateurProfile;
+
+    if (!$formateur) {
+        return response()->json(['message' => 'Profil non trouvé'], 404);
+    }
+
+    // On cherche les absences qui appartiennent aux SÉANCES de ce formateur
+    $absences = Absence::whereHas('seance', function($query) use ($formateur) {
+            $query->where('formateur_id', $formateur->id);
+        })
+        ->with([
+            'stagiaire:id,nom,prenom',
+            'seance.groupe:id,code' // On récupère le groupe via la séance
+        ])
+        ->orderBy('created_at', 'desc') // On trie par date de création
+        ->limit(5)
+        ->get();
+
+    return response()->json($absences);
+}
 }

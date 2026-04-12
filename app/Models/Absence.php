@@ -44,7 +44,12 @@ class Absence extends Model
      */
     public function stagiaire()
     {
-        return $this->belongsTo(StagiaireProfile::class, 'stagiaire_id');
+       return $this->belongsTo(StagiaireProfile::class, 'stagiaire_id');
+    }
+
+    public function groupe()
+    {
+        return $this->belongsTo(Groupe::class, 'groupe_id');
     }
 
 
