@@ -6,12 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\Absence;
 use App\Models\User;
 use App\Models\Groupe;
+use App\Models\Filiere;
 use App\Models\StagiaireProfile;
 use App\Models\FormateurProfile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-
+use Carbon\Carbon;
 class DirectorController extends Controller
 {
     // --- PARTIE DASHBOARD ---
@@ -154,5 +155,23 @@ public function getSeancesByFormateur($id)
     return \App\Models\Seance::where('formateur_id', $id)
         ->with(['module', 'groupe'])
         ->get();
+}
+
+public function getFiltersData()
+{
+    try {
+        // On récupère une seule ligne par titre de filière pour éviter les doublons
+        // On privilégie le code le plus court (ex: 'ID' au lieu de 'IDRS')
+        $filieres = Filiere::select('title', DB::raw('MIN(code) as code'))
+            ->groupBy('title')
+            ->get();
+
+        return response()->json([
+            'filieres' => $filieres,
+            'groupes' => \App\Models\Groupe::select('id', 'code')->get(), //
+        ]);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Erreur : ' . $e->getMessage()], 500);
+    }
 }
 }
