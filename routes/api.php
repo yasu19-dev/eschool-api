@@ -2,7 +2,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\StagiaireController;
 use App\Http\Controllers\Api\FormateurController;
 use App\Http\Controllers\Api\DirectorController;
 use App\Http\Controllers\Api\ResponsableController;
@@ -15,6 +14,7 @@ use App\Http\Controllers\Api\EmploiController;
 use App\Http\Controllers\Api\GroupeController; // Assurez-vous que ce controller existe
 use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\SeanceController;
+use App\Http\Controllers\Api\StagiaireController;
 
 // --- 🔓 ROUTES PUBLIQUES ---
 Route::post('/login', [AuthController::class, 'login']);
@@ -46,6 +46,8 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
         Route::get('/annonces', [AnnonceController::class, 'getStagiaireAnnonces']);
         Route::post('upload-photo', [StagiaireController::class, 'uploadPhoto']);
         Route::post('/reclamations', [StagiaireController::class, 'postReclamation']);
+        Route::get('/reclamations', [StagiaireController::class, 'getReclamations']);
+        Route::get('/attestations', [StagiaireController::class, 'getAttestations']);
         Route::post('/attestations', [StagiaireController::class, 'postAttestation']);
 
         // 📅 Emploi du temps (Option B : filtré par le group_id du stagiaire)
@@ -104,9 +106,18 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
     // ✅ Ajoute ces deux routes ici :
 Route::get('/groupes/{id}/seances', [DirectorController::class, 'getSeancesByGroupe']);
 Route::get('/formateurs/{id}/seances', [DirectorController::class, 'getSeancesByFormateur']);
+    // ✅ AJOUT : La route pour les statistiques que nous codons ci-dessous
+    Route::get('/stats/absences', [AbsenceController::class, 'getAdminStats']);
+// Route pour recuperer les données nécessaires aux filtres de statistiques
+Route::get('/filters-data', [DirectorController::class, 'getFiltersData']);
 Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDelete']);
     // Ta route reset password peut rester dans UserController si tu veux
     Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+    // Route pour l'export Excel (CSV)
+   Route::get('/export/absences', [AbsenceController::class, 'exportAbsences']);
+
+    // Route pour le rapport PDF
+    Route::get('/report/pdf', [AbsenceController::class, 'generatePdfReport']);
 });
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE

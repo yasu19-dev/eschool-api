@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Seance;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 class SeanceController extends Controller

@@ -28,7 +28,7 @@ public function store(Request $request)
         $validated = $request->validate([
             'titre'     => 'required|string|max:255',
             'contenu'   => 'required|string',
-            'type'      => 'required|in:Examen,Absence Formateur,Information',
+            'type'      => 'required|in:Examen,Absence Formateur,Information','E-Learning',
             'groupe_id' => 'required|exists:groupes,id',
         ]);
 
