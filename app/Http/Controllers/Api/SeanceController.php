@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 
 class SeanceController extends Controller
 {
+
     /**
      * Récupère les séances du formateur avec les relations Groupe et Module.
      */

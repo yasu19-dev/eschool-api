@@ -53,27 +53,46 @@ class EmploiController extends Controller
     /**
      * Côté Stagiaire : Récupère l'emploi lié à SON groupe
      */
-public function getForStagiaire()
+// public function getForStagiaire()
+// {
+//     $user = Auth::user();
+
+//     // 1. On va chercher le groupe_id dans la table stagiaireProfiles
+//     // Assure-toi que 'user_id' est bien le nom de la colonne qui relie au stagiaire
+//     $groupeId = DB::table('stagiaire_profiles')
+//                     ->where('user_id', $user->id)
+//                     ->value('groupe_id');
+
+//     // 2. Si on ne trouve aucun groupe pour cet utilisateur
+//     if (!$groupeId) {
+//         return response()->json([], 200);
+//     }
+
+//     // 3. On récupère les emplois liés à ce groupe spécifique
+//     $emplois = \App\Models\Emploi::whereHas('groupes', function($query) use ($groupeId) {
+//         // Attention : vérifie si dans ta table pivot la colonne s'appelle 'group_id' ou 'groupe_id'
+//         $query->where('emploi_groupe.group_id', $groupeId);
+//     })->latest()->take(1)->get();
+
+//     return response()->json($emplois);
+// }
+public function getMesSeances(Request $request)
 {
     $user = Auth::user();
 
-    // 1. On va chercher le groupe_id dans la table stagiaireProfiles
-    // Assure-toi que 'user_id' est bien le nom de la colonne qui relie au stagiaire
-    $groupeId = DB::table('stagiaire_profiles')
-                    ->where('user_id', $user->id)
-                    ->value('groupe_id');
+    // 1. Récupérer le groupe du stagiaire
+    $groupeId = DB::table('stagiaire_profiles')->where('user_id', $user->id)->value('groupe_id');
 
-    // 2. Si on ne trouve aucun groupe pour cet utilisateur
     if (!$groupeId) {
         return response()->json([], 200);
     }
 
-    // 3. On récupère les emplois liés à ce groupe spécifique
-    $emplois = \App\Models\Emploi::whereHas('groupes', function($query) use ($groupeId) {
-        // Attention : vérifie si dans ta table pivot la colonne s'appelle 'group_id' ou 'groupe_id'
-        $query->where('emploi_groupe.group_id', $groupeId);
-    })->latest()->take(1)->get();
+    // 2. CORRECTION ICI : On enlève 'salle' du with() car c'est une simple colonne texte
+    $seances = \App\Models\Seance::with(['module', 'formateur', 'groupe'])
+        ->where('groupe_id', $groupeId)
+        ->orderBy('date', 'asc') // On trie par date
+        ->get();
 
-    return response()->json($emplois);
+    return response()->json($seances);
 }
 }
