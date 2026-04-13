@@ -2,7 +2,6 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\StagiaireController;
 use App\Http\Controllers\Api\FormateurController;
 use App\Http\Controllers\Api\DirectorController;
 use App\Http\Controllers\Api\ResponsableController;
@@ -15,6 +14,7 @@ use App\Http\Controllers\Api\EmploiController;
 use App\Http\Controllers\Api\GroupeController; // Assurez-vous que ce controller existe
 use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\SeanceController;
+use App\Http\Controllers\Api\StagiaireController;
 
 // --- 🔓 ROUTES PUBLIQUES ---
 Route::post('/login', [AuthController::class, 'login']);
@@ -46,6 +46,8 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
         Route::get('/annonces', [AnnonceController::class, 'getStagiaireAnnonces']);
         Route::post('upload-photo', [StagiaireController::class, 'uploadPhoto']);
         Route::post('/reclamations', [StagiaireController::class, 'postReclamation']);
+        Route::get('/reclamations', [StagiaireController::class, 'getReclamations']);
+        Route::get('/attestations', [StagiaireController::class, 'getAttestations']);
         Route::post('/attestations', [StagiaireController::class, 'postAttestation']);
 
         // 📅 Emploi du temps (Option B : filtré par le group_id du stagiaire)

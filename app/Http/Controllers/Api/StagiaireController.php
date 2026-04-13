@@ -18,16 +18,101 @@ class StagiaireController extends Controller
      * Display a listing of the resource.
      */
     // Route: GET /stagiaire/dashboard
+    // Route: GET /stagiaire/dashboard
     public function index(Request $request)
     {
         $profile = $request->user()->stagiaireProfile;
+
+        if (!$profile || !$profile->groupe_id) {
+            return response()->json(['message' => 'Aucun groupe assigné'], 404);
+        }
+
+        $groupeId = $profile->groupe_id;
+
+        // ==========================================
+        // 1. STATISTIQUES (Moyenne, Présence, Docs, Annonces)
+        // ==========================================
+
+        // Calcul de la moyenne
+        $moyenne = \App\Models\Note::where('stagiaire_id', $profile->id)->avg('valeur');
+        $moyenneFormat = $moyenne ? number_format($moyenne, 2) . '/20' : '--/20';
+
+        // Calcul du taux de présence
+        $totalSeances = \App\Models\Seance::where('groupe_id', $groupeId)->where('date', '<=', now())->count();
+        $absences = $profile->absences()->count(); // Utilisation de ta relation existante
+        $tauxPresence = $totalSeances > 0 ? round((($totalSeances - $absences) / $totalSeances) * 100) . '%' : '--%';
+
+        // Comptage des documents et annonces
+        $annoncesCount = \App\Models\Annonce::where('groupe_id', $groupeId)->where('created_at', '>=', now()->subDays(7))->count();
+
+
+        // ==========================================
+        // 2. LE PROCHAIN COURS (Upcoming Course)
+        // ==========================================
+        $nextSeance = \App\Models\Seance::with(['module', 'formateur'])
+            ->where('groupe_id', $groupeId)
+            ->where('date', '>=', now()->toDateString())
+            ->orderBy('date', 'asc')
+            ->first();
+
+        $upcomingCourse = null;
+        if ($nextSeance) {
+            $nomFormateur = $nextSeance->formateur ? $nextSeance->formateur->nom . ' ' . $nextSeance->formateur->prenom : 'À définir';
+
+            $upcomingCourse = [
+                'module' => $nextSeance->module ? $nextSeance->module->intitule : 'Module Inconnu',
+                'time' => $nextSeance->creneau ?? '--:--',
+                'room' => $nextSeance->salle ?? 'À définir',
+                'formateur' => 'Prof. ' . $nomFormateur
+            ];
+        }
+
+
+        // ==========================================
+        // 3. LES DERNIÈRES NOTES
+        // ==========================================
+        $recentNotes = \App\Models\Note::with('module')
+            ->where('stagiaire_id', $profile->id)
+            ->orderBy('created_at', 'desc')
+            ->take(3)
+            ->get()
+            ->map(function ($note) {
+                return [
+                    'module' => $note->module ? $note->module->intitule : 'Matière inconnue',
+                    'note' => $note->valeur,
+                    'type' => $note->type ?? 'Évaluation'
+                ];
+            });
+
+
+        // ==========================================
+        // 4. LES DERNIÈRES ANNONCES
+        // ==========================================
+        $recentAnnouncements = \App\Models\Annonce::where('groupe_id', $groupeId)
+            ->orderBy('created_at', 'desc')
+            ->take(3)
+            ->get()
+            ->map(function ($annonce) {
+                return [
+                    'title' => $annonce->titre,
+                    'date' => $annonce->created_at->diffForHumans(), // Format "Il y a 2 heures"
+                    'category' => $annonce->categorie ?? 'Information'
+                ];
+            });
+
+
+        // ==========================================
+        // RETOUR JSON FINAL POUR REACT
+        // ==========================================
         return response()->json([
             'stats' => [
-                'absences' => $profile->absences()->count(),
-                'retards' => $profile->absences()->where('est_en_retard', true)->count(),
-                'notes_count' => $profile->notes()->count(),
+                'moyenne' => $moyenneFormat,
+                'taux_presence' => $tauxPresence,
+                'annonces' => $annoncesCount . ' nouvelles'
             ],
-            'recent_annonces' => \App\Models\Annonce::where('groupe_id', $profile->groupe_id)->latest()->take(3)->get()
+            'upcomingCourse' => $upcomingCourse,
+            'recentNotes' => $recentNotes,
+            'recentAnnouncements' => $recentAnnouncements
         ]);
     }
     /**
@@ -169,47 +254,117 @@ public function getSchedule(Request $request)
 }
     // 3. Poster une réclamation
   // Route: POST /stagiaire/reclamations
-public function postReclamation(Request $request)
-{
-    // 1. On valide uniquement ce qui existe dans ta table
-    $data = $request->validate([
-        'type' => 'required|string', // Ex: Réclamation pédagogique
-        'message' => 'required|string',
-    ]);
+// ==========================================
+    // 1. RÉCUPÉRER L'HISTORIQUE DES RÉCLAMATIONS
+    // Route: GET /api/stagiaire/reclamations
+    // ==========================================
+    public function getReclamations(Request $request)
+    {
+        $profile = $request->user()->stagiaireProfile;
 
-    // 2. On récupère l'ID du profil stagiaire connecté
-    $data['stagiaire_id'] = $request->user()->stagiaireProfile->id;
+        if (!$profile) {
+            return response()->json(['message' => 'Profil stagiaire introuvable.'], 404);
+        }
 
-    // 3. Le statut sera "En cours" par défaut (défini dans ta migration)
-    $reclamation = Reclamation::create($data);
+        // On récupère toutes les réclamations, de la plus récente à la plus ancienne
+        $reclamations = \App\Models\Reclamation::where('stagiaire_id', $profile->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
 
-    return response()->json([
-        'message' => 'Réclamation enregistrée avec succès',
-        'data' => $reclamation
-    ], 201);
-}
+        return response()->json($reclamations);
+    }
+
+    // ==========================================
+    // 2. SOUMETTRE UNE NOUVELLE RÉCLAMATION
+    // Route: POST /api/stagiaire/reclamations
+    // ==========================================
+    public function postReclamation(Request $request)
+    {
+        // 1. Validation des données envoyées par React
+        $data = $request->validate([
+            'type' => 'required|string',
+            'message' => 'required|string',
+        ]);
+
+        $profile = $request->user()->stagiaireProfile;
+
+        if (!$profile) {
+            return response()->json(['message' => 'Profil stagiaire introuvable.'], 404);
+        }
+
+        // 2. Ajout de l'ID du stagiaire
+        $data['stagiaire_id'] = $profile->id;
+
+        // 3. Forcer le statut initial (si ce n'est pas déjà géré automatiquement par ta base de données)
+        // Vérifie si ta colonne s'appelle "status" ou "statut" dans ta migration !
+        $data['status'] = 'En attente';
+
+        // 4. Création dans la base de données
+        $reclamation = \App\Models\Reclamation::create($data);
+
+        return response()->json([
+            'message' => 'Réclamation enregistrée avec succès',
+            'data' => $reclamation
+        ], 201);
+    }
     // 4. Demander une attestation
     // Route: POST /api/stagiaire/attestations
-public function postAttestation(Request $request)
-{
-    // 1. Validation rigoureuse selon tes commentaires de migration
-    $request->validate([
-        'type' => 'required|string|in:Scolarité,Récupération Bac provisoire,Récupération Bac définitive',
-    ]);
+// ==========================================
+    // 1. RÉCUPÉRER L'HISTORIQUE DES ATTESTATIONS
+    // Route: GET /api/stagiaire/attestations
+    // ==========================================
+    public function getAttestations(Request $request)
+    {
+        $profile = $request->user()->stagiaireProfile;
 
+        $attestations = \App\Models\DemandeAttestation::where('stagiaire_id', $profile->id)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json($attestations);
+    }
+
+    // ==========================================
+    // 2. SOUMETTRE UNE DEMANDE D'ATTESTATION
+    // Route: POST /api/stagiaire/attestations
+    // ==========================================
+    public function postAttestation(Request $request)
+{
     $profile = $request->user()->stagiaireProfile;
 
-    // 2. Création de la demande
-    // Le 'status' sera "En attente" par défaut grâce à ta migration
-    $demande = DemandeAttestation::create([
+    // 1. Validation du type
+    $request->validate([
+        'type' => 'required|string|in:Attestation de scolarité,Attestation de stage,Relevé de notes,Retrait de Bac provisoire,Retrait de Bac définitif',
+    ]);
+
+    $typeDemande = $request->type;
+
+    // 2. Vérification : Est-ce que ce TYPE a déjà été demandé ce mois-ci ?
+    $currentMonth = now()->month;
+    $currentYear = now()->year;
+
+    $existingRequest = \App\Models\DemandeAttestation::where('stagiaire_id', $profile->id)
+        ->where('type', $typeDemande) // On filtre par le type spécifique
+        ->whereMonth('created_at', $currentMonth)
+        ->whereYear('created_at', $currentYear)
+        ->exists();
+
+    if ($existingRequest) {
+        return response()->json([
+            'message' => "Vous avez déjà demandé une \"$typeDemande\" ce mois-ci. Vous pourrez en refaire une le mois prochain."
+        ], 403);
+    }
+
+    // 3. Création
+    $demande = \App\Models\DemandeAttestation::create([
         'stagiaire_id' => $profile->id,
-        'type' => $request->type,
+        'type' => $typeDemande,
+        'status' => 'En attente'
     ]);
 
     return response()->json([
-        'message' => 'Demande d\'attestation enregistrée avec succès.',
-        'reference' => $demande->id, // L'ID servira de base au format ATT-2025-XXX
-        'status' => $demande->status
+        'message' => 'Demande enregistrée avec succès.',
+        'data' => $demande
     ], 201);
 }
 // app/Http/Controllers/Api/StagiaireController.php
