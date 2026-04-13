@@ -85,6 +85,7 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
 
     Route::get('/absences-recentes', [AbsenceController::class, 'recent']);
     Route::get('/mes-seances', [FormateurController::class, 'mesSeances']);
+    Route::get('/export-pdf', [FormateurController::class, 'exportPDF']);
 
     });
 

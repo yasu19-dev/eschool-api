@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class FormateurController extends Controller
 {
@@ -448,5 +449,32 @@ public function getProfileStats(Request $request)
         'totalGroupes' => $groupeIds->count(),
         'totalModules' => $totalModules
     ]);
+}
+public function exportPDF(Request $request) {
+    $formateur = $request->user();
+
+    $seances = $formateur->formateurProfile->seances()
+        ->with(['module', 'groupe'])
+        ->get();
+
+    // Tri personnalisé des créneaux horaires pour le PDF
+    $slots = $seances->pluck('creneau')->unique()->values()->toArray();
+    usort($slots, function($a, $b) {
+        preg_match('/\d+/', $a, $matchA);
+        preg_match('/\d+/', $b, $matchB);
+        return (int)$matchA[0] - (int)$matchB[0];
+    });
+
+    $data = [
+        'formateur' => $formateur,
+        'seances' => $seances,
+        'slots' => $slots, // On envoie les créneaux déjà triés
+        'date' => now()->format('d/m/Y'),
+    ];
+
+    $pdf = Pdf::loadView('pdf.formateur_schedule', $data)
+              ->setPaper('a4', 'landscape');
+
+    return $pdf->download('Planning_ISMONTIC.pdf');
 }
 }
