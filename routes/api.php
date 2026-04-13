@@ -10,9 +10,10 @@ use App\Http\Controllers\Api\AbsenceController;
 use App\Http\Controllers\Api\AnnonceController;
 use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\NoteController;
-use App\Http\Controllers\Api\PublicController;
+
 use App\Http\Controllers\Api\EmploiController;
 use App\Http\Controllers\Api\GroupeController; // Assurez-vous que ce controller existe
+use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\SeanceController;
 
 // --- 🔓 ROUTES PUBLIQUES ---
@@ -22,8 +23,8 @@ Route::get('/test-connexion', function () {
     return response()->json(['message' => 'API ISMONTIC connectée !']);
 });
 
-Route::get('/filieres', [PublicController::class, 'getFilieres']);
-Route::get('/faq', [PublicController::class, 'getFaq']);
+Route::get('/public/filieres', [PublicController::class, 'getFilieres']);
+Route::post('/public/contact', [PublicController::class, 'postContact']);
 
 // --- 🔐 ROUTES PROTÉGÉES (Sanctum) ---
 Route::middleware('auth:sanctum')->group(function () {
@@ -113,6 +114,9 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
         Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);
         Route::get('/attestations', [ResponsableController::class, 'getPendingAttestations']);
         Route::patch('/attestations/{id}/validate', [ResponsableController::class, 'validateAttestation']);
+        Route::get('/contacts', [PublicController::class, 'getMessagesForAdmin']);
+        Route::patch('/contacts/{contact}/read', [PublicController::class, 'markAsRead']);
+        Route::delete('/contacts/{contact}', [PublicController::class, 'destroy']);
 
         // Optionnel : voir le dernier emploi uploadé
         Route::get('/stagiaire/emploi-du-temps', [EmploiController::class, 'getLatest']);
