@@ -41,8 +41,7 @@ class ImportController extends Controller
     ]);
 
     try {
-        // OPTIONNEL : On vide les séances existantes si on veut un renouvellement total
-        // Seance::truncate();
+        
 
         Excel::import(new TimetableImport, $request->file('fichier_excel'));
 

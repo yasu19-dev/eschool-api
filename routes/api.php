@@ -85,6 +85,7 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
 
     // 🏛️ ESPACE DIRECTION
     Route::prefix('director')->group(function () {
+    Route::get('/dashboard', [DirectorController::class, 'index']);
     Route::get('/users', [DirectorController::class, 'getUsers']);
     Route::get('/users/trashed', [DirectorController::class, 'trashed']); // ✅ Doit s'appeler 'trashed'
     Route::post('/users', [DirectorController::class, 'store']);
@@ -107,9 +108,24 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
     Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
     // Route pour l'export Excel (CSV)
    Route::get('/export/absences', [AbsenceController::class, 'exportAbsences']);
-
     // Route pour le rapport PDF
     Route::get('/report/pdf', [AbsenceController::class, 'generatePdfReport']);
+    // Export pour tous les groupes (un par page)
+    Route::get('/export/all-groups-schedule', [DirectorController::class, 'exportAllGroupsSchedule']);
+
+    // Export pour tous les formateurs (un par page)
+    Route::get('/export/all-teachers-schedule', [DirectorController::class, 'exportAllTeachersSchedule']);
+  // partie parametres généraux
+  Route::get('/settings', [DirectorController::class, 'getSettings']);
+  Route::put('/settings', [DirectorController::class, 'updateSettings']);
+  // partie sauvegarde et restauration de la base de données
+  // ✅ Route pour déclencher la sauvegarde manuelle
+    Route::post('/backup/run', [DirectorController::class, 'runBackup']);
+    // ✅ Route pour restaurer une sauvegarde spécifique
+    Route::post('/backup/restore', [DirectorController::class, 'restoreBackup']);
+// ✅ Route pour le statistiques système (ex: espace de stockage, nombre de sauvegardes, etc.)
+    Route::get('/system/stats', [DirectorController::class, 'getSystemStats']);
+    Route::post('/system/maintenance/{action}', [DirectorController::class, 'runMaintenance']);
 });
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE
