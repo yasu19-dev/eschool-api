@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 
 class FormateurController extends Controller
 {
@@ -37,7 +38,26 @@ class FormateurController extends Controller
      * Display the specified resource.
      */
     // app/Http/Controllers/Api/FormateurController.php
+public function mesSeances(Request $request) {
+    // On utilise exactement la même logique que getSeances qui fonctionne
+    $seances = $request->user()->formateurProfile->seances()
+        ->with(['module', 'groupe'])
+        ->get();
 
+    // On retourne le tableau transformé pour être sûr que React lise bien les propriétés
+    return response()->json($seances->map(function($s) {
+        return [
+            'id' => $s->id,
+            'date' => $s->date,
+            'creneau' => $s->creneau,
+            'salle' => $s->salle,
+            'groupe_id' => $s->groupe_id,
+            'module_id' => $s->module_id,
+            'groupe' => $s->groupe, // Nécessaire pour seance.groupe.code
+            'module' => $s->module  // Nécessaire pour seance.module.intitule
+        ];
+    }));
+}
 public function showProfile(Request $request)
 {
     // On récupère l'utilisateur et on charge son profil formateur
