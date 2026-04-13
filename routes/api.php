@@ -98,9 +98,18 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
     // ✅ Ajoute ces deux routes ici :
 Route::get('/groupes/{id}/seances', [DirectorController::class, 'getSeancesByGroupe']);
 Route::get('/formateurs/{id}/seances', [DirectorController::class, 'getSeancesByFormateur']);
+    // ✅ AJOUT : La route pour les statistiques que nous codons ci-dessous
+    Route::get('/stats/absences', [AbsenceController::class, 'getAdminStats']);
+// Route pour recuperer les données nécessaires aux filtres de statistiques
+Route::get('/filters-data', [DirectorController::class, 'getFiltersData']);
 Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDelete']);
     // Ta route reset password peut rester dans UserController si tu veux
     Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+    // Route pour l'export Excel (CSV)
+   Route::get('/export/absences', [AbsenceController::class, 'exportAbsences']);
+
+    // Route pour le rapport PDF
+    Route::get('/report/pdf', [AbsenceController::class, 'generatePdfReport']);
 });
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE
