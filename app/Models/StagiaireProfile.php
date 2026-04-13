@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class StagiaireProfile extends Model
 {
     use HasUuids;
+    // App\Models\StagiaireProfile.php
+
+protected $casts = [
+    'date_naissance' => 'date',
+    'date_inscription' => 'date',
+];
     // * les champs suivants sont "fillable" (assignables en masse) pour la création et la mise à jour
     protected $fillable = [
         'id',
