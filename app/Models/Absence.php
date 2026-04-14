@@ -52,6 +52,11 @@ class Absence extends Model
         return $this->belongsTo(Groupe::class, 'groupe_id');
     }
 
+    public function stagiaireProfile()
+{
+    // Une absence appartient à un stagiaire
+    return $this->belongsTo(StagiaireProfile::class, 'stagiaire_id');
+}
 
     /**
      * Casts pour transformer les colonnes tinyint en booléens propres.

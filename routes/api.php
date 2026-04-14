@@ -93,6 +93,7 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
 
     // 🏛️ ESPACE DIRECTION
     Route::prefix('director')->group(function () {
+    Route::get('/dashboard', [DirectorController::class, 'index']);
     Route::get('/users', [DirectorController::class, 'getUsers']);
     Route::get('/users/trashed', [DirectorController::class, 'trashed']); // ✅ Doit s'appeler 'trashed'
     Route::post('/users', [DirectorController::class, 'store']);
@@ -115,9 +116,24 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
     Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
     // Route pour l'export Excel (CSV)
    Route::get('/export/absences', [AbsenceController::class, 'exportAbsences']);
-
     // Route pour le rapport PDF
     Route::get('/report/pdf', [AbsenceController::class, 'generatePdfReport']);
+    // Export pour tous les groupes (un par page)
+    Route::get('/export/all-groups-schedule', [DirectorController::class, 'exportAllGroupsSchedule']);
+
+    // Export pour tous les formateurs (un par page)
+    Route::get('/export/all-teachers-schedule', [DirectorController::class, 'exportAllTeachersSchedule']);
+  // partie parametres généraux
+  Route::get('/settings', [DirectorController::class, 'getSettings']);
+  Route::put('/settings', [DirectorController::class, 'updateSettings']);
+  // partie sauvegarde et restauration de la base de données
+  // ✅ Route pour déclencher la sauvegarde manuelle
+    Route::post('/backup/run', [DirectorController::class, 'runBackup']);
+    // ✅ Route pour restaurer une sauvegarde spécifique
+    Route::post('/backup/restore', [DirectorController::class, 'restoreBackup']);
+// ✅ Route pour le statistiques système (ex: espace de stockage, nombre de sauvegardes, etc.)
+    Route::get('/system/stats', [DirectorController::class, 'getSystemStats']);
+    Route::post('/system/maintenance/{action}', [DirectorController::class, 'runMaintenance']);
 });
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE
@@ -125,15 +141,15 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
         Route::get('/dashboard', [ResponsableController::class, 'index']);
         Route::get('/justifications', [ResponsableController::class, 'getPendingJustifications']);
         Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);
-        // Routes pour la gestion des attestations:
-        Route::get('/attestations', [ResponsableController::class, 'getAttestations']);
-        Route::patch('/attestations/{id}/status', [ResponsableController::class, 'updateStatus']);
-        Route::get('/attestations/{id}/generate-pdf', [ResponsableController::class, 'generatePdf']);
-        Route::get('/contacts', [PublicController::class, 'getMessagesForAdmin']);
-        Route::patch('/contacts/{contact}/read', [PublicController::class, 'markAsRead']);
-        Route::delete('/contacts/{contact}', [PublicController::class, 'destroy']);
+        Route::get('/attestations', [ResponsableController::class, 'getPendingAttestations']);
+        Route::patch('/attestations/{id}/validate', [ResponsableController::class, 'validateAttestation']);
+ // partie emploi du temps
+ Route::get('/groupes', [ResponsableController::class, 'getGroupes']);
+    Route::get('/formateurs', [ResponsableController::class, 'getFormateurs']);
+    Route::get('/groupes/{id}/seances', [ResponsableController::class, 'getSeancesByGroupe']);
+    Route::get('/formateurs/{id}/seances', [ResponsableController::class, 'getSeancesByFormateur']);
+    Route::get('/export/groups-pdf', [ResponsableController::class, 'exportGroupsPDF']);
+    Route::get('/export/teachers-pdf', [ResponsableController::class, 'exportTeachersPDF']);
 
-        // Optionnel : voir le dernier emploi uploadé
-        Route::get('/stagiaire/emploi-du-temps', [EmploiController::class, 'getLatest']);
     });
 });

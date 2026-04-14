@@ -21,55 +21,112 @@ class TimetableImport implements ToModel, WithHeadingRow, WithCustomCsvSettings
         return ['delimiter' => ','];
     }
 
-    public function model(array $row)
-    {
-        // 1. Recherche du Groupe (Clé 'groupe' du CSV)
-        $groupe = Groupe::where('code', $row['groupe'])->first();
-        if (!$groupe) {
-            throw new Exception("Erreur : Le groupe '{$row['groupe']}' est introuvable.");
-        }
+    // public function model(array $row)
+    // {
+    //     // 1. Recherche du Groupe (Clé 'groupe' du CSV)
+    //     $groupe = Groupe::where('code', $row['groupe'])->first();
+    //     if (!$groupe) {
+    //         throw new Exception("Erreur : Le groupe '{$row['groupe']}' est introuvable.");
+    //     }
 
-        // 2. Recherche du Module (Clé 'module' du CSV) ✅ Corrigé
-        $module = Module::where('code', $row['module'])->first();
-        if (!$module) {
-            throw new Exception("Erreur : Le module '{$row['module']}' est introuvable.");
-        }
+    //     // 2. Recherche du Module (Clé 'module' du CSV) ✅ Corrigé
+    //     $module = Module::where('code', $row['module'])->first();
+    //     if (!$module) {
+    //         throw new Exception("Erreur : Le module '{$row['module']}' est introuvable.");
+    //     }
 
-        // 3. Recherche du Formateur par NOM ✅ Corrigé (puisque le CSV contient le nom)
-        $nomFamille = str_replace(['Mme. ', 'M. '], '', $row['formateur']);
-        $formateur = FormateurProfile::where('nom', 'like', '%' . trim($nomFamille) . '%')->first();
+    //     // 3. Recherche du Formateur par NOM ✅ Corrigé (puisque le CSV contient le nom)
+    //     $nomFamille = str_replace(['Mme. ', 'M. '], '', $row['formateur']);
+    //     $formateur = FormateurProfile::where('nom', 'like', '%' . trim($nomFamille) . '%')->first();
 
-        if (!$formateur) {
-            throw new Exception("Erreur : Le formateur '{$row['formateur']}' est introuvable dans la base.");
-        }
+    //     if (!$formateur) {
+    //         throw new Exception("Erreur : Le formateur '{$row['formateur']}' est introuvable dans la base.");
+    //     }
 
-        // 4. Logique de Date flexible ✅
-        try {
-            if (is_numeric($row['date'])) {
-                $dateFormatted = ExcelDate::excelToDateTimeObject($row['date'])->format('Y-m-d');
-            } else {
-                // Carbon essaie de deviner le format si ce n'est pas du d/m/Y
-                $dateFormatted = Carbon::parse($row['date'])->format('Y-m-d');
-            }
-        } catch (Exception $e) {
-            throw new Exception("Erreur format date sur la ligne : " . $row['date']);
-        }
+    //     // 4. Logique de Date flexible ✅
+    //     try {
+    //         if (is_numeric($row['date'])) {
+    //             $dateFormatted = ExcelDate::excelToDateTimeObject($row['date'])->format('Y-m-d');
+    //         } else {
+    //             // Carbon essaie de deviner le format si ce n'est pas du d/m/Y
+    //             $dateFormatted = Carbon::parse($row['date'])->format('Y-m-d');
+    //         }
+    //     } catch (Exception $e) {
+    //         throw new Exception("Erreur format date sur la ligne : " . $row['date']);
+    //     }
 
-        // 5. Création (ou mise à jour pour éviter les doublons)
-        return Seance::updateOrCreate(
-            [
-                'groupe_id' => $groupe->id,
-                'date'      => $dateFormatted,
-                'creneau'   => $row['creneau'], // ✅ Corrigé (clé CSV 'creneau')
-            ],
-            [
-                'id'           => (string) \Illuminate\Support\Str::uuid(),
-                'module_id'    => $module->id,
-                'formateur_id' => $formateur->id,
-                'type'         => 'Cours',
-                'salle'        => $row['salle'],
-                'commentaire_prof' => $row['notes'] ?? null,
-            ]
-        );
+    //     // 5. Création (ou mise à jour pour éviter les doublons)
+    //     return Seance::updateOrCreate(
+    //         [
+    //             'groupe_id' => $groupe->id,
+    //             'date'      => $dateFormatted,
+    //             'creneau'   => $row['creneau'], // ✅ Corrigé (clé CSV 'creneau')
+    //         ],
+    //         [
+    //             'id'           => (string) \Illuminate\Support\Str::uuid(),
+    //             'module_id'    => $module->id,
+    //             'formateur_id' => $formateur->id,
+    //             'type'         => 'Cours',
+    //             'salle'        => $row['salle'],
+    //             'commentaire_prof' => $row['notes'] ?? null,
+    //         ]
+    //     );
+    // }
+public function model(array $row)
+{
+    // 1. Recherche du Groupe
+    $groupe = Groupe::where('code', $row['groupe'])->first();
+    if (!$groupe) {
+        throw new Exception("Erreur : Le groupe '{$row['groupe']}' est introuvable.");
     }
+
+    // 2. Recherche du Module
+    $module = Module::where('code', $row['module'])->first();
+    if (!$module) {
+        throw new Exception("Erreur : Le module '{$row['module']}' est introuvable.");
+    }
+
+    // 3. Recherche du Formateur
+    $nomFamille = str_replace(['Mme. ', 'M. '], '', $row['formateur']);
+    $formateur = FormateurProfile::where('nom', 'like', '%' . trim($nomFamille) . '%')->first();
+    if (!$formateur) {
+        throw new Exception("Erreur : Le formateur '{$row['formateur']}' est introuvable.");
+    }
+
+    // 4. Formatage de la Date
+    try {
+        if (is_numeric($row['date'])) {
+            $dateFormatted = ExcelDate::excelToDateTimeObject($row['date'])->format('Y-m-d');
+        } else {
+            $dateFormatted = Carbon::parse($row['date'])->format('Y-m-d');
+        }
+    } catch (Exception $e) {
+        throw new Exception("Format date invalide : " . $row['date']);
+    }
+
+    // --- MODIFICATION DEMANDÉE : VÉRIFICATION DE DOUBLON ---
+    $existeDeja = Seance::where('groupe_id', $groupe->id)
+        ->where('date', $dateFormatted)
+        ->where('creneau', $row['creneau'])
+        ->exists();
+
+    if ($existeDeja) {
+        // Cette exception sera rattrapée par l'ImportController et affichée en rouge sur ton Front
+        throw new Exception("Conflit : Le groupe {$row['groupe']} a déjà une séance prévue le {$dateFormatted} à {$row['creneau']}.");
+    }
+
+    // 5. Création de la séance unique
+    return new Seance([
+        'id'           => (string) \Illuminate\Support\Str::uuid(),
+        'groupe_id'    => $groupe->id,
+        'module_id'    => $module->id,
+        'formateur_id' => $formateur->id,
+        'date'         => $dateFormatted,
+        'creneau'      => $row['creneau'],
+        'type'         => 'Cours',
+        'salle'        => $row['salle'],
+        'commentaire_prof' => $row['notes'] ?? null,
+    ]);
+}
+
 }
