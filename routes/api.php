@@ -135,8 +135,13 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
         Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);
         Route::get('/attestations', [ResponsableController::class, 'getPendingAttestations']);
         Route::patch('/attestations/{id}/validate', [ResponsableController::class, 'validateAttestation']);
+ // partie emploi du temps
+ Route::get('/groupes', [ResponsableController::class, 'getGroupes']);
+    Route::get('/formateurs', [ResponsableController::class, 'getFormateurs']);
+    Route::get('/groupes/{id}/seances', [ResponsableController::class, 'getSeancesByGroupe']);
+    Route::get('/formateurs/{id}/seances', [ResponsableController::class, 'getSeancesByFormateur']);
+    Route::get('/export/groups-pdf', [ResponsableController::class, 'exportGroupsPDF']);
+    Route::get('/export/teachers-pdf', [ResponsableController::class, 'exportTeachersPDF']);
 
-        // Optionnel : voir le dernier emploi uploadé
-        Route::get('/stagiaire/emploi-du-temps', [EmploiController::class, 'getLatest']);
     });
 });
