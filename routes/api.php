@@ -141,8 +141,15 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
         Route::get('/dashboard', [ResponsableController::class, 'index']);
         Route::get('/justifications', [ResponsableController::class, 'getPendingJustifications']);
         Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);
+        // Route::get('/attestations', [ResponsableController::class, 'getAttestations']);
+        // Route::patch('/attestations/{id}/validate', [ResponsableController::class, 'validateAttestation']);
+        // Routes pour la gestion des attestations:
         Route::get('/attestations', [ResponsableController::class, 'getAttestations']);
-        Route::patch('/attestations/{id}/validate', [ResponsableController::class, 'validateAttestation']);
+        Route::patch('/attestations/{id}/status', [ResponsableController::class, 'updateStatus']);
+        Route::get('/attestations/{id}/generate-pdf', [ResponsableController::class, 'generatePdf']);
+        Route::get('/contacts', [PublicController::class, 'getMessagesForAdmin']);
+        Route::patch('/contacts/{contact}/read', [PublicController::class, 'markAsRead']);
+        Route::delete('/contacts/{contact}', [PublicController::class, 'destroy']);
  // partie emploi du temps
  Route::get('/groupes', [ResponsableController::class, 'getGroupes']);
     Route::get('/formateurs', [ResponsableController::class, 'getFormateurs']);
