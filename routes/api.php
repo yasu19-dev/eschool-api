@@ -141,7 +141,7 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
         Route::get('/dashboard', [ResponsableController::class, 'index']);
         Route::get('/justifications', [ResponsableController::class, 'getPendingJustifications']);
         Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);
-        Route::get('/attestations', [ResponsableController::class, 'getPendingAttestations']);
+        Route::get('/attestations', [ResponsableController::class, 'getAttestations']);
         Route::patch('/attestations/{id}/validate', [ResponsableController::class, 'validateAttestation']);
  // partie emploi du temps
  Route::get('/groupes', [ResponsableController::class, 'getGroupes']);
