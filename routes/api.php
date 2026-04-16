@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\GroupeController; // Assurez-vous que ce controller
 use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\SeanceController;
 use App\Http\Controllers\Api\StagiaireController;
+use App\Http\Controllers\MedicalController;
 
 // --- 🔓 ROUTES PUBLIQUES ---
 Route::post('/login', [AuthController::class, 'login']);
@@ -159,6 +160,7 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
     Route::get('/formateurs/{id}/seances', [ResponsableController::class, 'getSeancesByFormateur']);
     Route::get('/export/groups-pdf', [ResponsableController::class, 'exportGroupsPDF']);
     Route::get('/export/teachers-pdf', [ResponsableController::class, 'exportTeachersPDF']);
+    Route::get('/medical/all', [MedicalController::class, 'getAllDossiers']);
 
     });
 });
