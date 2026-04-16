@@ -140,6 +140,7 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE
     Route::prefix('responsable-stagiaire')->group(function () {
+        
         Route::get('/dashboard', [ResponsableController::class, 'index']);
         Route::get('/justifications', [ResponsableController::class, 'getPendingJustifications']);
         Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);
@@ -162,5 +163,14 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
     Route::get('/export/teachers-pdf', [ResponsableController::class, 'exportTeachersPDF']);
     Route::get('/medical/all', [MedicalController::class, 'getAllDossiers']);
 
+ // --- PARTIE JUSTIFICATIFS D'ABSENCES ---
+    // 1. Récupérer les statistiques (Total, En attente, etc.)
+    Route::get('/justifications/stats', [ResponsableController::class, 'getJustificationStats']);
+
+    // 2. Récupérer la liste complète des justificatifs
+    Route::get('/justifications', [ResponsableController::class, 'getAllJustifications']);
+
+    // 3. Mettre à jour le statut d'un justificatif (Approuver/Rejeter)
+    Route::put('/justifications/{id}', [ResponsableController::class, 'updateJustificationStatus']);
     });
 });
