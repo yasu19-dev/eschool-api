@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Stagiaire\StagiaireProfileResource;
 use App\Models\Reclamation;
 use App\Models\DemandeAttestation;
+use App\Models\DossierMedical;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,6 +14,51 @@ use Illuminate\Support\Facades\Hash;
 
 class StagiaireController extends Controller
 {
+    public function submitDossier(Request $request)
+    {
+        $profile = $request->user()->stagiaireProfile;
+
+        // Optionnel : Vérifier s'il a déjà un dossier en cours
+        $existe = DossierMedical::where('stagiaire_id', $profile->id)
+                    ->where('statut', 'En attente')
+                    ->exists();
+
+        if ($existe) {
+            return response()->json(['message' => 'Vous avez déjà un dossier en cours de traitement.'], 403);
+        }
+
+        $dossier = DossierMedical::create([
+            'stagiaire_id' => $profile->id,
+            'code_stagiaire' => $request->code,
+            'cin' => $request->cin,
+            'nom' => $request->nom,
+            'prenom' => $request->prenom,
+            'adresse' => $request->adresse,
+            'ville' => $request->ville,
+            'telephone' => $request->tel,
+            'situation_familiale' => $request->situation,
+            'allocation_familiale' => $request->allocation === 'oui' ? true : false,
+            'statut' => 'En attente'
+        ]);
+
+        return response()->json(['message' => 'Dossier soumis avec succès', 'data' => $dossier], 201);
+    }
+
+    // 2. Pour l'Admin : Télécharger le PDF
+    public function exportPdf($id)
+    {
+        $dossier = DossierMedical::findOrFail($id);
+
+        $data = [
+            'dossier' => $dossier,
+            'date_impression' => now()->format('d/m/Y H:i')
+        ];
+
+        // L'astuce pour éviter les erreurs VS Code
+        $pdf = app('dompdf.wrapper')->loadView('pdf.dossier_medical', $data);
+
+        return $pdf->download('Dossier_Medical_'.$dossier->cin.'.pdf');
+    }
 
     /**
      * Display a listing of the resource.

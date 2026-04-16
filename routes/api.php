@@ -53,6 +53,7 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
         // 📅 Emploi du temps (Option B : filtré par le group_id du stagiaire)
         Route::get('/schedule', [EmploiController::class, 'getForStagiaire']);
         Route::get('/mes-seances', [EmploiController::class, 'getMesSeances']);
+        Route::post('/medical', [StagiaireController::class, 'submitDossier']);
     });
 
     // 👨‍🏫 ESPACE FORMATEUR
@@ -150,6 +151,7 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
         Route::get('/contacts', [PublicController::class, 'getMessagesForAdmin']);
         Route::patch('/contacts/{contact}/read', [PublicController::class, 'markAsRead']);
         Route::delete('/contacts/{contact}', [PublicController::class, 'destroy']);
+        Route::get('/admin/medical/{id}/pdf', [StagiaireController::class, 'exportPdf']);
  // partie emploi du temps
  Route::get('/groupes', [ResponsableController::class, 'getGroupes']);
     Route::get('/formateurs', [ResponsableController::class, 'getFormateurs']);
