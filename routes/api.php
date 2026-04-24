@@ -90,6 +90,8 @@ Route::put('/director/users/{user}/reset-password', [UserController::class, 'res
     Route::get('/absences-recentes', [AbsenceController::class, 'recent']);
     Route::get('/mes-seances', [FormateurController::class, 'mesSeances']);
     Route::get('/export-pdf', [FormateurController::class, 'exportPDF']);
+    Route::get('/efms', [FormateurController::class, 'getFormateurEfms']);
+    Route::get('/efms/{id}/pdf', [FormateurController::class, 'downloadPresencePdf']);
 
     });
 
@@ -140,7 +142,7 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE
     Route::prefix('responsable-stagiaire')->group(function () {
-        
+
         Route::get('/dashboard', [ResponsableController::class, 'index']);
         Route::get('/justifications', [ResponsableController::class, 'getPendingJustifications']);
         Route::patch('/absences/{id}/validate', [ResponsableController::class, 'validateAbsence']);

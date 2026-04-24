@@ -41,4 +41,5 @@ public function emplois()
 {
     return $this->belongsToMany(Module::class, 'groupe_module');
 }
+
 }

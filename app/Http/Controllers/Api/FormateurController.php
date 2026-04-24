@@ -477,4 +477,64 @@ public function exportPDF(Request $request) {
 
     return $pdf->download('Planning_ISMONTIC.pdf');
 }
+
+
+// 1. Récupérer les EFM programmés
+    public function getFormateurEfms(Request $request)
+{
+    try {
+        $user = $request->user();
+        if (!$user->formateurProfile) {
+            return response()->json(['error' => 'Profil formateur introuvable'], 404);
+        }
+
+        $formateurId = $user->formateurProfile->id;
+
+        // 1. On récupère les séances
+        $seances = Seance::with(['module', 'groupe.stagiaireprofiles'])
+            ->where('formateur_id', $formateurId)
+            ->orderBy('date', 'desc')
+            ->get();
+
+        // 2. ON FILTRE POUR ÉVITER LES DOUBLONS
+        // On ne garde qu'une seule séance par Module et par Groupe
+        $uniqueSeances = $seances->unique(function ($item) {
+            return $item->module_id . $item->groupe_id;
+        });
+
+        // 3. On map les données uniques
+        $data = $uniqueSeances->map(function ($s) {
+            return [
+                'id' => $s->id,
+                'module' => $s->module->intitule ?? $s->module->nom ?? 'Module inconnu',
+                'group' => $s->groupe->nom ?? $s->groupe->code ?? 'Groupe inconnu',
+                'date' => $s->date,
+                'room' => $s->salle ?? 'A DISTANCE',
+                'studentsCount' => $s->groupe ? $s->groupe->stagiaireprofiles->count() : 0,
+                'status' => $s->date >= now()->toDateString() ? 'upcoming' : 'completed',
+            ];
+        })->values(); // .values() réinitialise les index du tableau JSON
+
+        return response()->json($data);
+
+    } catch (\Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+}
+
+    // 2. Générer le PDF de présence
+public function downloadPresencePdf($id)
+{
+    // Ajoute un return temporaire pour tester si la route répond
+    // return response()->json(['message' => 'Route trouvée ! ID: ' . $id]);
+
+    $seance = Seance::with(['module', 'groupe.stagiaireprofiles'])->findOrFail($id);
+
+    $pdf = Pdf::loadView('pdf.presence_efm', [
+        'seance' => $seance,
+        'stagiaires' => $seance->groupe->stagiaireprofiles
+    ]);
+
+    return $pdf->download("Presence_{$seance->groupe->nom}.pdf");
+}
 }

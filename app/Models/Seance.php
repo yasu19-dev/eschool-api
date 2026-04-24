@@ -93,4 +93,7 @@ public function groupe()
     {
         return $this->absences()->where('est_en_retard', false)->count();
     }
+    public function stagiaires() {
+    return $this->hasManyThrough(StagiaireProfile::class, Groupe::class, 'id', 'groupe_id', 'groupe_id', 'id');
+}
 }
