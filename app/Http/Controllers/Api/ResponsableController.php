@@ -19,78 +19,83 @@ use Illuminate\Support\Facades\DB;
 
 class ResponsableController extends Controller
 {
-    /**
-     * Statistiques pour le dashboard global du Responsable
-     */
+   // !! Dashboard du responsable
+
+    public function index()
+        {
+            try {
+                $now = Carbon::now();
+                $startOfMonth = $now->copy()->startOfMonth()->format('Y-m-d');
+
+                // 1. KPIs
+                $totalStagiaires = StagiaireProfile::count();
+                // justificatifs utilise 'statut'
+                // $justificationsAttente = Justificatif::where('statut', 'En attente')->count();
+
+// A. On compte toutes les absences réelles (est_en_retard = 0)
+$totalAbsencesReelles = Absence::where('est_en_retard', false)->count();
+
+// B. On compte les absences déjà marquées comme justifiées dans la table absences
+$approuvees = Absence::where('est_en_retard', false)
+                    ->where('est_justifie', true)
+                    ->count();
+
+// C. On compte les justificatifs rejetés dans la table justificatifs
+$rejetees = Justificatif::where('statut', 'Non justifié')->count();
+
+// D. Le chiffre "En attente" est la soustraction des deux
+$justificationsAttente = max(0, $totalAbsencesReelles - ($approuvees + $rejetees));
 
 
-    // ==========================================
-    // GESTION DES ABSENCES
-    // ==========================================
-   public function getPendingJustifications() {
+                // demande_attestations utilise 'status'
+                $demandesAttestations = DemandeAttestation::where('status', 'En attente')->count();
 
-        return Absence::where('est_justifie', false)->with(['stagiaire', 'seance.module'])->get();
-    }
+                // 2. Taux d'Absence Global
+                $absencesCount = Absence::where('est_en_retard', false)
+                    ->where('date', '>=', $startOfMonth)
+                    ->count();
+                $seancesCount = Seance::where('date', '>=', $startOfMonth)->count();
+                $totalPossible = $seancesCount * $totalStagiaires;
+                $tauxAbsence = $totalPossible > 0 ? ($absencesCount / $totalPossible) * 100 : 0;
 
-public function index()
-    {
-        try {
-            $now = Carbon::now();
-            $startOfMonth = $now->copy()->startOfMonth()->format('Y-m-d');
+                // 3. Alertes simples
+                $alerts = [];
+                if ($justificationsAttente > 0) {
+                    $alerts[] = ['message' => "$justificationsAttente justifications à traiter.", 'severity' => 'medium'];
+                }
+                if ($demandesAttestations > 0) {
+                    $alerts[] = ['message' => "$demandesAttestations attestations en attente.", 'severity' => 'medium'];
+                }
 
-            // 1. KPIs
-            $totalStagiaires = StagiaireProfile::count();
-            // justificatifs utilise 'statut'
-            $justificationsAttente = Justificatif::where('statut', 'En attente')->count();
-            // demande_attestations utilise 'status'
-            $demandesAttestations = DemandeAttestation::where('status', 'En attente')->count();
+                // 4. Attestations récentes
+                $recentAttestations = DemandeAttestation::with('stagiaire')
+                    ->latest()
+                    ->take(3)
+                    ->get()
+                    ->map(function($att) {
+                        return [
+                            'student' => $att->stagiaire ? $att->stagiaire->nom . ' ' . $att->stagiaire->prenom : 'Inconnu',
+                            'type' => $att->type, // Utilise 'type' selon ton modèle
+                            'status' => $att->status, // Utilise 'status'
+                            'date' => $att->created_at->diffForHumans()
+                        ];
+                    });
 
-            // 2. Taux d'Absence Global
-            $absencesCount = Absence::where('est_en_retard', false)
-                ->where('date', '>=', $startOfMonth)
-                ->count();
-            $seancesCount = Seance::where('date', '>=', $startOfMonth)->count();
-            $totalPossible = $seancesCount * $totalStagiaires;
-            $tauxAbsence = $totalPossible > 0 ? ($absencesCount / $totalPossible) * 100 : 0;
-
-            // 3. Alertes simples
-            $alerts = [];
-            if ($justificationsAttente > 0) {
-                $alerts[] = ['message' => "$justificationsAttente justifications à traiter.", 'severity' => 'medium'];
+                return response()->json([
+                    'kpis' => [
+                        'taux_absence' => round($tauxAbsence, 1) . '%',
+                        'justifications' => $justificationsAttente,
+                        'attestations' => $demandesAttestations,
+                        'stagiaires' => $totalStagiaires
+                    ],
+                    'alerts' => $alerts,
+                    'recent_attestations' => $recentAttestations
+                ]);
+            } catch (\Exception $e) {
+                return response()->json(['error' => $e->getMessage()], 500);
             }
-            if ($demandesAttestations > 0) {
-                $alerts[] = ['message' => "$demandesAttestations attestations en attente.", 'severity' => 'medium'];
-            }
-
-            // 4. Attestations récentes
-            $recentAttestations = DemandeAttestation::with('stagiaire')
-                ->latest()
-                ->take(3)
-                ->get()
-                ->map(function($att) {
-                    return [
-                        'student' => $att->stagiaire ? $att->stagiaire->nom . ' ' . $att->stagiaire->prenom : 'Inconnu',
-                        'type' => $att->type, // Utilise 'type' selon ton modèle
-                        'status' => $att->status, // Utilise 'status'
-                        'date' => $att->created_at->diffForHumans()
-                    ];
-                });
-
-            return response()->json([
-                'kpis' => [
-                    'taux_absence' => round($tauxAbsence, 1) . '%',
-                    'justifications' => $justificationsAttente,
-                    'attestations' => $demandesAttestations,
-                    'stagiaires' => $totalStagiaires
-                ],
-                'alerts' => $alerts,
-                'recent_attestations' => $recentAttestations
-            ]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
         }
-    }
-// Validation d'une attestation
+
 
 
     public function validateAbsence(Absence $absence)
@@ -99,13 +104,7 @@ public function index()
         return response()->json(['message' => 'Justifié']);
     }
 
-    // ==========================================
-    // GESTION DES ATTESTATIONS (NOUVELLE LOGIQUE)
-    // ==========================================
-
-    /**
-     * Récupère TOUTES les attestations pour le tableau React
-     */
+// !! yasmine :la partie attestation de scolarité pour le responsable
     public function getAttestations()
     {
         // On charge la relation stagiaire ET la relation user à l'intérieur du stagiaire
@@ -117,9 +116,6 @@ public function index()
         return response()->json($attestations);
     }
 
-    /**
-     * Met à jour dynamiquement le statut (Validée, Refusée, Prête, Livrée...)
-     */
     public function updateStatus(Request $request, $id)
     {
         $request->validate([
@@ -149,10 +145,7 @@ public function index()
             'data' => $demande
         ]);
     }
-    // ==========================================
-    // GÉNÉRER LE PDF (ATTESTATION DE SCOLARITÉ)
-    // Route: GET /api/attestations/{id}/generate-pdf
-    // ==========================================
+
     public function generatePdf($id)
     {
         $demande = DemandeAttestation::with(['stagiaire.groupe'])->findOrFail($id);
@@ -195,7 +188,7 @@ public function index()
 
 
 
-    //  ?? logique de emploi du temps pour le responsable
+ //  ?? logique de emploi du temps pour le responsable
     // 1. Liste des groupes pour le filtre
 public function getGroupes() {
     return Groupe::select('id', 'code')->orderBy('code', 'asc')->get();
@@ -267,47 +260,96 @@ private function organizeSchedule($seances) {
 
 
 // ?? la logique de justification des abscences pour le responsable
+
 public function getJustificationStats() {
+    // 1. On définit la base : uniquement les absences réelles (est_en_retard = 0) [cite : AbsenceController.php]
+    $baseQuery = Absence::where('est_en_retard', false);
+
+    $totalAbsences = (clone $baseQuery)->count();
+
+    // 2. Approuvées : On compte les absences réelles qui ont un justificatif "Justifié" [cite : ResponsableController.php]
+    $approuvees = (clone $baseQuery)
+        ->join('justificatifs', function($join) {
+            $join->on('absences.stagiaire_id', '=', 'justificatifs.stagiaire_id')
+                 ->on('absences.seance_id', '=', 'justificatifs.seance_id');
+        })
+        ->where('justificatifs.statut', 'Justifié')
+        ->count();
+
+    // 3. Rejetées : On compte les absences réelles qui ont un justificatif "Non justifié" [cite : ResponsableController.php]
+    $rejetees = (clone $baseQuery)
+        ->join('justificatifs', function($join) {
+            $join->on('absences.stagiaire_id', '=', 'justificatifs.stagiaire_id')
+                 ->on('absences.seance_id', '=', 'justificatifs.seance_id');
+        })
+        ->where('justificatifs.statut', 'Non justifié')
+        ->count();
+
+    // 4. En attente : C'est mathématiquement le reste visible dans votre liste [cite : ResponsableController.php]
+    $enAttente = $totalAbsences - ($approuvees + $rejetees);
+
     return response()->json([
-        'total' => Justificatif::count(),
-        'en_attente' => Justificatif::where('statut', 'En attente')->count(),
-        'approuvees' => Justificatif::where('statut', 'Justifié')->count(),
-        'rejetees' => Justificatif::where('statut', 'Non justifié')->count(),
+        'total' => $totalAbsences,
+        'en_attente' => max(0, $enAttente),
+        'approuvees' => $approuvees,
+        'rejetees' => $rejetees,
     ]);
 }
 
-
 public function getAllJustifications() {
-    // On récupère les justificatifs avec les relations pour l'affichage complet
-    return Justificatif::with(['stagiaireProfile.groupe', 'seance.module'])
+    // On ne récupère que les absences réelles (est_en_retard = 0)
+    $absences = Absence::where('est_en_retard', false)
+        ->with(['stagiaire.groupe', 'seance.module'])
         ->latest()
         ->get();
+
+    return $absences->map(function($absence) {
+        $justificatif = Justificatif::where('stagiaire_id', $absence->stagiaire_id)
+                                    ->where('seance_id', $absence->seance_id)
+                                    ->first();
+
+        return [
+            'id' => $absence->id,
+            'stagiaire_profile' => $absence->stagiaire,
+            'seance' => $absence->seance,
+            'statut' => $justificatif ? $justificatif->statut : 'En attente',
+            'fichier_url' => $justificatif ? $justificatif->fichier_url : null,
+        ];
+    });
 }
 
 public function updateJustificationStatus(Request $request, $id) {
     $request->validate([
-        'statut' => 'required|in:Justifié,Non justifié',
-        'commentaire' => 'nullable|string'
+        'statut' => 'required|in:Justifié,Non justifié,En attente',
     ]);
 
     return DB::transaction(function () use ($request, $id) {
-        $justificatif = Justificatif::findOrFail($id);
+        $absence = Absence::findOrFail($id);
 
-        // 1. Mise à jour du justificatif
-        $justificatif->update([
-            'statut' => $request->statut,
-            'est_valide' => $request->statut === 'Justifié'
+        // Enregistrement/Mise à jour dans la table justificatifs
+        $justificatif = Justificatif::updateOrCreate(
+            [
+                'stagiaire_id' => $absence->stagiaire_id,
+                'seance_id'    => $absence->seance_id,
+            ],
+            [
+                'statut'     => $request->statut,
+                'est_valide' => $request->statut === 'Justifié',
+            ]
+        );
+
+        // Synchronisation avec le champ est_justifie de l'absence
+        $absence->update([
+            'est_justifie' => $request->statut === 'Justifié'
         ]);
-
-        // 2. Si approuvé, on met à jour l'absence liée
-        if ($request->statut === 'Justifié') {
-            Absence::where('stagiaire_id', $justificatif->stagiaire_id)
-                ->where('seance_id', $justificatif->seance_id)
-                ->update(['est_justifie' => true]);
-        }
 
         return response()->json(['message' => 'Statut mis à jour avec succès']);
     });
 }
+
+
 }
+
+
+
 

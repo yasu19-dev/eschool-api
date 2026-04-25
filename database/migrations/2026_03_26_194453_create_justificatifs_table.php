@@ -19,7 +19,7 @@ Schema::create('justificatifs', function (Blueprint $table) {
     $table->string('fichier_url');
     $table->enum('statut', ['En attente', 'Justifié', 'Non justifié'])->default('En attente');
     $table->boolean('est_valide')->default(false);
-     $table->enum('type', ['Certificat Médical', 'Convocation', 'Autre']);
+    $table->enum('type', ['Certificat Médical', 'Convocation', 'Autre'])->default('');
     $table->timestamps();
 });
     }
