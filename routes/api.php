@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\PublicController;
 use App\Http\Controllers\Api\SeanceController;
 use App\Http\Controllers\Api\StagiaireController;
 use App\Http\Controllers\MedicalController;
+use App\Http\Controllers\PlanningController;
+use App\Http\Controllers\RoomController;
 
 // --- 🔓 ROUTES PUBLIQUES ---
 Route::post('/login', [AuthController::class, 'login']);
@@ -138,6 +140,9 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
 // ✅ Route pour le statistiques système (ex: espace de stockage, nombre de sauvegardes, etc.)
     Route::get('/system/stats', [DirectorController::class, 'getSystemStats']);
     Route::post('/system/maintenance/{action}', [DirectorController::class, 'runMaintenance']);
+    Route::get('/planning-data', [PlanningController::class, 'index']);
+    Route::post('/assign-module', [PlanningController::class, 'assign']);
+    Route::get('/room-statistics', [RoomController::class, 'getRoomStatistics']);
 });
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE

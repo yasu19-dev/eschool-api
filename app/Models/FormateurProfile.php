@@ -50,4 +50,7 @@ class FormateurProfile extends Model
     {
         return $this->hasMany(Note::class, 'formateur_id');
     }
+    public function modules() {
+    return $this->hasMany(Module::class, 'formateur_id');
+}
 }

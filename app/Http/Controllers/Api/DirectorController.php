@@ -76,26 +76,32 @@ public function index() {
             });
 
       // 6. Récupération des logs avec protection Null-safe et identification du formateur
-$recentLogs = Absence::with(['stagiaireProfile', 'seance.module', 'seance.formateur']) // Ajout du formateur ici
+$recentLogs = Absence::with(['stagiaireProfile', 'seance.module', 'seance.formateur'])
     ->latest()
-    ->take(5)
+    ->take(30)
     ->get()
+    ->unique(function ($abs) {
+        // ON UTILISE stagiaire_id (comme dans ta capture PHPMyAdmin)
+        return $abs->stagiaire_id .
+               $abs->est_en_retard .
+               $abs->created_at->format('Y-m-d H:i');
+    })
+    ->values()
+    ->take(5)// ... le reste de ton map ...
     ->map(function($abs) {
         $type = $abs->est_en_retard ? 'Retard' : 'Absence';
 
-        // Protection Null-safe pour le stagiaire et le module
         $prenom = $abs->stagiaireProfile?->prenom ?? 'Stagiaire';
         $nom = $abs->stagiaireProfile?->nom ?? 'Inconnu';
-        $module = $abs->seance?->module?->intitule ?? 'Module inconnu';
+        $module = $abs->seance?->module?->intitule ?? $abs->seance?->module?->nom ?? 'Module inconnu';
 
-        // Récupération du nom du formateur qui a marqué l'absence
         $nomFormateur = $abs->seance?->formateur
             ? $abs->seance->formateur->nom . ' ' . $abs->seance->formateur->prenom
             : 'Admin/Système';
 
         return [
             'action' => "{$type} : {$prenom} {$nom} ({$module})",
-            'user' => ['nom' => $nomFormateur], // Affiche maintenant le vrai nom du prof
+            'user' => ['nom' => $nomFormateur],
             'created_at' => $abs->created_at
         ];
     });
