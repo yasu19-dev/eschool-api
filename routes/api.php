@@ -143,6 +143,7 @@ Route::delete('/users/{id}/force-delete', [DirectorController::class, 'forceDele
     Route::get('/planning-data', [PlanningController::class, 'index']);
     Route::post('/assign-module', [PlanningController::class, 'assign']);
     Route::get('/room-statistics', [RoomController::class, 'getRoomStatistics']);
+    Route::post('/import-formateurs', [ImportController::class, 'importFormateurs']);
 });
 
     // 📋 ESPACE RESPONSABLE STAGIAIRE

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Imports\FormateurImport;
 use Illuminate\Http\Request;
 use App\Imports\StagiaireImport;
 use Maatwebsite\Excel\Facades\Excel;
@@ -41,7 +42,7 @@ class ImportController extends Controller
     ]);
 
     try {
-        
+
 
         Excel::import(new TimetableImport, $request->file('fichier_excel'));
 
@@ -56,10 +57,26 @@ class ImportController extends Controller
     }
 }
 
-    // Tu peux supprimer ou laisser les méthodes vides si tu n'en as pas besoin
-    public function index() {}
-    public function store(Request $request) {}
-    public function show(string $id) {}
-    public function update(Request $request, string $id) {}
-    public function destroy(string $id) {}
+public function importFormateurs(Request $request)
+{
+    // 1. Validation du fichier
+    $request->validate([
+        'fichier_excel' => 'required|mimes:xlsx,xls,csv|max:10240'
+    ]);
+
+    try {
+        // 2. Appel de l'importateur spécifique aux formateurs
+        \Maatwebsite\Excel\Facades\Excel::import(new \App\Imports\FormateurImport, $request->file('fichier_excel'));
+
+        return response()->json([
+            'message' => 'La liste des formateurs a été importée avec succès.'
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'message' => 'Erreur lors de l\'importation : ' . $e->getMessage()
+        ], 500);
+    }
+}
+
 }

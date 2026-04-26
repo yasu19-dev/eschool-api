@@ -5,128 +5,136 @@ namespace App\Imports;
 use App\Models\Seance;
 use App\Models\Groupe;
 use App\Models\Module;
+use App\Models\User;
 use App\Models\FormateurProfile;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
-use Maatwebsite\Excel\Concerns\WithCustomCsvSettings; // ✅ Requis pour les CSV
+use Maatwebsite\Excel\Concerns\WithCustomCsvSettings;
 use Carbon\Carbon;
-use Exception;
-use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 
 class TimetableImport implements ToModel, WithHeadingRow, WithCustomCsvSettings
 {
-    // ✅ Force la lecture du CSV avec des virgules pour éviter les erreurs de lecture
+    // --- MÉMOIRE LOCALE ---
+    // On va stocker les profs ici pour éviter les doublons pendant l'import
+    private $formateursCache = [];
+
     public function getCsvSettings(): array
     {
         return ['delimiter' => ','];
     }
 
-    // public function model(array $row)
-    // {
-    //     // 1. Recherche du Groupe (Clé 'groupe' du CSV)
-    //     $groupe = Groupe::where('code', $row['groupe'])->first();
-    //     if (!$groupe) {
-    //         throw new Exception("Erreur : Le groupe '{$row['groupe']}' est introuvable.");
-    //     }
-
-    //     // 2. Recherche du Module (Clé 'module' du CSV) ✅ Corrigé
-    //     $module = Module::where('code', $row['module'])->first();
-    //     if (!$module) {
-    //         throw new Exception("Erreur : Le module '{$row['module']}' est introuvable.");
-    //     }
-
-    //     // 3. Recherche du Formateur par NOM ✅ Corrigé (puisque le CSV contient le nom)
-    //     $nomFamille = str_replace(['Mme. ', 'M. '], '', $row['formateur']);
-    //     $formateur = FormateurProfile::where('nom', 'like', '%' . trim($nomFamille) . '%')->first();
-
-    //     if (!$formateur) {
-    //         throw new Exception("Erreur : Le formateur '{$row['formateur']}' est introuvable dans la base.");
-    //     }
-
-    //     // 4. Logique de Date flexible ✅
-    //     try {
-    //         if (is_numeric($row['date'])) {
-    //             $dateFormatted = ExcelDate::excelToDateTimeObject($row['date'])->format('Y-m-d');
-    //         } else {
-    //             // Carbon essaie de deviner le format si ce n'est pas du d/m/Y
-    //             $dateFormatted = Carbon::parse($row['date'])->format('Y-m-d');
-    //         }
-    //     } catch (Exception $e) {
-    //         throw new Exception("Erreur format date sur la ligne : " . $row['date']);
-    //     }
-
-    //     // 5. Création (ou mise à jour pour éviter les doublons)
-    //     return Seance::updateOrCreate(
-    //         [
-    //             'groupe_id' => $groupe->id,
-    //             'date'      => $dateFormatted,
-    //             'creneau'   => $row['creneau'], // ✅ Corrigé (clé CSV 'creneau')
-    //         ],
-    //         [
-    //             'id'           => (string) \Illuminate\Support\Str::uuid(),
-    //             'module_id'    => $module->id,
-    //             'formateur_id' => $formateur->id,
-    //             'type'         => 'Cours',
-    //             'salle'        => $row['salle'],
-    //             'commentaire_prof' => $row['notes'] ?? null,
-    //         ]
-    //     );
-    // }
-public function model(array $row)
+   public function model(array $row)
 {
-    // 1. Recherche du Groupe
-    $groupe = Groupe::where('code', $row['groupe'])->first();
-    if (!$groupe) {
-        throw new Exception("Erreur : Le groupe '{$row['groupe']}' est introuvable.");
+    // 1. Extraction et nettoyage des codes
+    // Laravel Excel transforme "nom-formateur" en "nom_formateur"
+    $groupeCode = isset($row['groupe']) ? trim($row['groupe']) : null;
+    $moduleCode = isset($row['module']) ? trim($row['module']) : null;
+    $nomFormateurRaw = isset($row['nom_formateur']) ? trim($row['nom_formateur']) : null;
+    $horaire = isset($row['horaire']) ? trim($row['horaire']) : null;
+    $salle = isset($row['salle']) ? trim($row['salle']) : null;
+
+    // Si une information essentielle manque sur la ligne, on l'ignore
+    if (!$groupeCode || !$moduleCode || !$nomFormateurRaw) {
+        return null;
     }
 
-    // 2. Recherche du Module
-    $module = Module::where('code', $row['module'])->first();
-    if (!$module) {
-        throw new Exception("Erreur : Le module '{$row['module']}' est introuvable.");
+    // 2. Recherche des relations en base de données
+    $groupe = \App\Models\Groupe::where('code', $groupeCode)->first();
+    $module = \App\Models\Module::where('code', $moduleCode)->first();
+
+    // ⚠️ CRITIQUE : Si le groupe ou le module n'existe pas, on ne peut pas créer la séance
+    if (!$groupe || !$module) {
+        // Optionnel : tu peux mettre un \Log::error("Ligne ignorée : Groupe $groupeCode ou Module $moduleCode introuvable");
+        return null;
     }
 
-    // 3. Recherche du Formateur
-    $nomFamille = str_replace(['Mme. ', 'M. '], '', $row['formateur']);
-    $formateur = FormateurProfile::where('nom', 'like', '%' . trim($nomFamille) . '%')->first();
-    if (!$formateur) {
-        throw new Exception("Erreur : Le formateur '{$row['formateur']}' est introuvable.");
-    }
-
-    // 4. Formatage de la Date
+    // 3. Gestion de la Date (Conversion du format Excel 46006)
     try {
-        if (is_numeric($row['date'])) {
-            $dateFormatted = ExcelDate::excelToDateTimeObject($row['date'])->format('Y-m-d');
+        $dateRaw = $row['date'];
+        if (is_numeric($dateRaw)) {
+            // Convertit le chiffre Excel en objet DateTime puis en string Y-m-d
+            $dateFormatted = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($dateRaw)->format('Y-m-d');
         } else {
-            $dateFormatted = Carbon::parse($row['date'])->format('Y-m-d');
+            // Si c'est déjà une string (ex: "2025-12-15")
+            $dateFormatted = \Carbon\Carbon::parse($dateRaw)->format('Y-m-d');
         }
-    } catch (Exception $e) {
-        throw new Exception("Format date invalide : " . $row['date']);
+    } catch (\Exception $e) {
+        return null; // Date invalide
     }
 
-    // --- MODIFICATION DEMANDÉE : VÉRIFICATION DE DOUBLON ---
-    $existeDeja = Seance::where('groupe_id', $groupe->id)
+    // 4. Récupération du Formateur (via ta fonction de recherche floue)
+    try {
+        $formateur = $this->getFormateur($nomFormateurRaw);
+    } catch (\Exception $e) {
+        // Si le formateur n'existe pas, on ignore la ligne (ou on laisse l'exception remonter)
+        return null;
+    }
+
+    // 5. Vérification des Doublons (Sécurité)
+    // On ne veut pas importer deux fois la même séance pour le même groupe au même moment
+    $existe = \App\Models\Seance::where('groupe_id', $groupe->id)
         ->where('date', $dateFormatted)
-        ->where('creneau', $row['creneau'])
+        ->where('creneau', $horaire)
         ->exists();
 
-    if ($existeDeja) {
-        // Cette exception sera rattrapée par l'ImportController et affichée en rouge sur ton Front
-        throw new Exception("Conflit : Le groupe {$row['groupe']} a déjà une séance prévue le {$dateFormatted} à {$row['creneau']}.");
+    if ($existe) {
+        return null;
     }
 
-    // 5. Création de la séance unique
-    return new Seance([
-        'id'           => (string) \Illuminate\Support\Str::uuid(),
-        'groupe_id'    => $groupe->id,
-        'module_id'    => $module->id,
-        'formateur_id' => $formateur->id,
-        'date'         => $dateFormatted,
-        'creneau'      => $row['creneau'],
-        'type'         => 'Cours',
-        'salle'        => $row['salle'],
-        'commentaire_prof' => $row['notes'] ?? null,
+    // 6. Création de la Séance
+    return new \App\Models\Seance([
+        'id'               => (string) \Illuminate\Support\Str::uuid(),
+        'groupe_id'        => $groupe->id,
+        'module_id'        => $module->id,
+        'formateur_id'     => $formateur->id,
+        'date'             => $dateFormatted,
+        'creneau'          => $horaire,
+        'salle'            => $salle,
+        'type'             => 'Cours',
+        'commentaire_prof' => $row['statut'] ?? null,
     ]);
 }
 
+private function getFormateur($nomRaw)
+{
+    // 1. Nettoyage de base : on enlève M./Mme et on réduit les espaces multiples
+    $nomExcel = preg_replace('/^(Mme|M|Mr)\.?\s+/i', '', $nomRaw);
+    $nomExcel = strtoupper(trim(preg_replace('/\s+/', ' ', $nomExcel)));
+
+    if (empty($nomExcel)) {
+        throw new \Exception("Le nom du formateur est vide dans une ligne du fichier.");
+    }
+
+    // 2. Tentative de recherche par concaténation (Nom Prénom ou Prénom Nom)
+    $profile = FormateurProfile::where(function($query) use ($nomExcel) {
+        $query->where(DB::raw("UPPER(CONCAT(nom, ' ', prenom))"), $nomExcel)
+              ->orWhere(DB::raw("UPPER(CONCAT(prenom, ' ', nom))"), $nomExcel);
+    })->first();
+
+    // 3. Si non trouvé, on tente une recherche par "mots-clés" (plus souple pour EL AFIFI)
+    if (!$profile) {
+        $words = explode(' ', $nomExcel); // ["EL", "AFIFI", "RACHIDA"]
+
+        $profile = FormateurProfile::where(function($query) use ($words) {
+            foreach ($words as $word) {
+                if (strlen($word) > 2) { // On ignore les "M" ou "LE" trop courts
+                    $query->where(function($q) use ($word) {
+                        $q->where('nom', 'LIKE', '%' . $word . '%')
+                          ->orWhere('prenom', 'LIKE', '%' . $word . '%');
+                    });
+                }
+            }
+        })->first();
+    }
+
+    // 4. Si toujours rien, on lève l'erreur
+    if (!$profile) {
+        throw new \Exception("Le formateur '$nomExcel' n'existe pas. Vérifiez l'orthographe dans votre liste d'utilisateurs.");
+    }
+
+    return $profile;
+}
 }

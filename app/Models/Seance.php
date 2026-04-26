@@ -18,15 +18,16 @@ class Seance extends Model
      * Les attributs assignables en masse.
      */
     protected $fillable = [
-        'formateur_id',
-        'module_id',
-        'groupe_id',
-        'date',
-        'creneau',
-        'salle',
-        'commentaire_prof'
-        // Note : On ne met pas 'type' ici car il est calculé dynamiquement
-    ];
+    'id',
+    'groupe_id',
+    'module_id',
+    'formateur_id',
+    'date',
+    'creneau',
+    'salle',
+    'type',
+    'commentaire_prof'
+];
 
     // --- ACCESSEURS (Logique métier automatique) ---
 
